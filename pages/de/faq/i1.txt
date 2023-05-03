@@ -1,5 +1,0 @@
-====== PCRE UTF8 Support ======
-
-Das PCRE-PHP-Modul wurde ohne UTF-8 Support compiliert.
-
-http://php.net/pcre 

@@ -1,5 +1,0 @@
-====== Keine Hosts gefunden ======
-
-PNP wurde ohne Angabe eines Hosts aufgerufen.
-Beim Durchsuchen des Verzeichnisses ''var/perfdata'' konnten aber keine Hosts ermittelt werden.
-

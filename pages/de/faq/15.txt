@@ -1,3 +1,0 @@
-===== page-not-readable =====
-
-Die Page-Konfiguration kann nicht gelesen werden (Berechtigungen) bzw. existiert nicht.

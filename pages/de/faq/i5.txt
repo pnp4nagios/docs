@@ -1,5 +1,0 @@
-====== PHP-Modul iconv ======
-
-Das PHP-Modul ''iconv'' ist nicht geladen.
-
-http://php.net/iconv

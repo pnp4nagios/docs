@@ -1,5 +1,0 @@
-====== Template übergibt Array $def[] nicht ======
-
-Das für diesen Service verwendete Template übergibt kein Array $def[] zurück an PNP.
-
-Der Pfad zum Template wird in der Fehlermeldung übergeben.

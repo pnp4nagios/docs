@@ -1,4 +1,0 @@
-====== Keine Daten für diese Page ======
-
-Für die verwendete Page-Config konnten keine Daten ermittelt werden.
-Hostname bzw. Service-Beschreibung müssen dem Dateinamen im perfdata-Verzeichnis entsprechen, nicht der Bezeichnung in der host/service-Definition!

@@ -1,5 +1,0 @@
-====== RRDtool Binary is not executable ======
-
-
-Wenn Sie beim ersten Start von PNP4Nagios Webinterface den Fehler "//RRDtool Binary /usr/local/rrdtool-1.4.3/bin/rrdtool is not executable by PHP//" oder Fehlermeldungen anstatt Grafiken erhalten, dann deaktivieren Sie in ihrer //php.ini// den "//safe_mode//" (//safe_mode = off//) und //starten Apache2 neu//.
-

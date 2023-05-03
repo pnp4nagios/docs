@@ -1,9 +1,0 @@
-====== Config File nicht gefunden ======
-
-PNP benötigt zur Grundkonfiguration des Webfrontend eine Config-Datei.
-
-Der genaue Pfad ist der Fehlermeldung zu entnehmen.
-
-Der Pfad wurde während der Installation über ./configure und die übergegebenen Optionen bestimmt.
-
-Die Datei muss für den Apache-Webserver lesbar sein.

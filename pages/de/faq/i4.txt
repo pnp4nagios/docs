@@ -1,5 +1,0 @@
-====== PHP Modul filter ======
-
-Das PHP-Modul ''filter'' ist nicht geladen oder nicht kompiliert.
-
-http://www.php.net/filter
