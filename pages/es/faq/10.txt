@@ -1,0 +1,14 @@
+===== save-rrd-image =====
+
+En la creación de un documento PDF, PNP guarda temporalmente los gráficos como una imagen en el sistema de ficheros. De esta forma los gráficos pueden incluirse en el documento PDF.
+
+La ubicación se define en''etc/config.php''.
+
+<code php>
+#
+# Directory for Temporary Files used for PDF creation 
+#
+$conf['temp'] = "/var/tmp";
+</code>
+
+Este mensaje indica que el usuario del servidor web no tiene permisos de escritura en ese directorio.

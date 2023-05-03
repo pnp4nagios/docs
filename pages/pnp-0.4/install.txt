@@ -1,0 +1,127 @@
+====== Installation ======
+The installation of PNP will be described in more detail. It is expected that nagios was compiled from source and is located in /usr/local/nagios.\\ 
+**Attention:** The description applies to PNP 0.4.14. Hints to the current version can be found [[http://www.pnp4nagios.org/pnp/about#download|here]].\\ 
+Please note that PNP has to be configured after the installation.
+
+
+
+===== Make and more =====
+The installation of PNP is controlled by [[wpde>makefile]]s. The system is analyzed after invocation of ./configure and the detected values are tranferred to makefiles.
+
+Please unpack PNP as user root:
+<code>
+cd /usr/local/src
+wget http://downloads.sourceforge.net/pnp4nagios/pnp-0.4.14.tar.gz
+tar -xvzf pnp-0.4.14.tar.gz
+cd pnp-0.4.13
+</code>
+
+./configure is to be called from the directory pnp-<version> (pnp-0.4.14 in our case).
+
+<code>
+./configure
+</code>
+
+Some lines run across the screen. The output at the end is important.
+
+<code>
+*** Configuration summary for pnp 0.4.14 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/nagios
+  HTML Dir:                         /usr/local/nagios/share/pnp
+  Config Dir:                       /usr/local/nagios/etc/pnp
+  Path to rrdtool:                  /usr/bin/rrdtool (Version 1.2.15)
+  RRDs Perl Modules:                FOUND (Version 1.2015)
+  RRD Files stored in:              /usr/local/nagios/share/perfdata
+  process_perfdata.pl Logfile:      /usr/local/nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/nagios/var/spool/perfdata/
+</code>
+
+The paths shown should be checked. If the displayed values aren't correct you can change them calling ./configure with appropriate options.\\ 
+**Attention:** "Path to rrdtool" means path including name of binary! If necessary it can be specified using the following syntax:
+
+   ./configure --with-rrdtool=/usr/local/rrdtool-1.2.xx/bin/rrdtool
+
+   ./configure --help 
+
+shows the supported options.\\ \\ 
+**Attention:** If Nagios isn't installed under /usr/local/nagios and especially when using preconfigured Nagios packages the use of ''/configure ----prefix=<Nagios-Home>'' will most likely NOT be sufficient to install PNP correctly. Please have a careful look at the options at the end of the configure help page! 
+
+Example for Icinga
+<code>USER=icinga
+GROUP=icinga
+PREFIX=/usr/local/icinga
+./configure \
+	--with-nagios-user=$USER \
+	--with-nagios-group=$GROUP \
+	--prefix=$PREFIX \
+	--datarootdir=$PREFIX/share/pnp \
+	--with-rrdtool=/usr/bin/rrdtool \
+	--sysconfdir=$PREFIX/etc/pnp \
+	--with-perfdata-dir=$PREFIX/share/perfdata \
+	--with-perfdata-logfile=$PREFIX/var/perfdata.log \
+	--with-perfdata-spool-dir=$PREFIX/var/spool/perfdata</code>
+\\ 
+
+Invoking
+   make all
+
+compiles the components like NPCD which are written in C
+
+   make install
+
+copies everything to the right places in the file system. The paths were already shows during ./configure.
+
+You can call
+
+   make install-config
+
+optionally. This way config files for process_perfdata.pl and npcd are copied to etc/pnp.
+
+To install the NPCD Init script call
+
+   make install-init
+
+All these steps are combined in
+
+   make fullinstall
+
+
+===== Update =====
+
+The update works the same way as an installation. Please note that you have to call ''./configure'' with the same options you used during the first installation.
+Please check if you changed anything in the folder ''share/pnp/templates.dist''. Own templates should be placed in ''share/pnp/templates'' to avoid being overwritten.\\ 
+**Attention**: If you changed config.php then you should save this file before it is overwritten when you execute "make install-config".
+
+===== Debian packages =====
+
+PNP isn't available as an official debian package yet. [[http://www.velt.de|Sven Velt]] is working hard to change that.
+
+You will find debian packages on http://www.velt.de/tags/nagios-pnp
+
+
+
+===== The components =====
+
+After installation some components of PNP were copied to the appropriate places in the file system. These are
+
+the PHP-Files for the web-frontend in
+
+   /usr/local/nagios/share/pnp
+
+the data collector process_perfdata.pl in 
+
+   /usr/local/nagios/libexec
+
+sample config files with the suffix ''-sample'' in
+
+   /usr/local/nagios/etc/pnp
+
+the config file config.php for the web frontend in 
+
+   /usr/local/nagios/etc/pnp
+
+[[start|back to contents]] | [[config|configuration]]

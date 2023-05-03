@@ -1,0 +1,258 @@
+====== Konfiguration ======
+
+Im Folgenden wird die Konfiguration der bereits erwähnten [[modes|Arten der Performance-Daten Verarbeitung]] genauer erklärt.
+
+Die bevorzugte Methode der PNP-Entwickler ist der "Bulk Mode mit NPCD und npcdmod".
+
+===== Synchronous Mode =====
+
+{{ :synchronous.png?150|}}Der Synchronous-Mode ist die einfachste Art, den Datensammler ''process_perfdata.pl'' in Nagios zu integrieren. Hierbei wird bei jedem Ereignis ein gesondertes Command ''process-service-perfdata'' (bzw. ''process-host-perfdata'') ausgeführt.
+
+Grundsätzlich ist in der ''nagios.cfg'' die Verarbeitung der Performance-Daten zu aktivieren. Bitte beachten Sie, dass diese Direktive wahrscheinlich bereits in der Konfigurationsdatei enthalten ist (Default ist "0").
+
+   process_performance_data=1
+
+Für jeden Host und jeden Service, für den KEINE Performance-Daten verarbeitet werden sollen, ist die Verarbeitung der Performance-Daten explizit auszuschalten.
+
+<code>
+define service {
+   ...
+   process_perf_data 0
+   ...
+}
+</code>
+
+Weiterhin ist es ab Nagios 3.x möglich, in der ''nagios.cfg'' das Exportieren der Environment-Variablen zu deaktivieren. Diese sind jedoch für den Synchronous-Mode zwingend erforderlich. Daher muss
+
+  enable_environment_macros=1
+
+ebenfalls in der ''nagios.cfg'' gesetzt sein. 
+
+Zusätzlich wird das Kommando zum Verarbeiten der Performance-Daten in der ''nagios.cfg'' angegeben.
+
+   service_perfdata_command=process-service-perfdata
+
+Ab Nagios 3.x ist es durchaus sinnvoll, auch die Verarbeitung der Performance-Daten für Hosts einzuschalten. Nagios 3 führt durch die geänderte Hostcheck-Logik nun auch die Prüfung der Hosts regelmäßig aus.
+
+   host_perfdata_command=process-host-perfdata
+
+Die referenzierten Commands müssen natürlich auch Nagios bekannt gegeben werden. Wie man sieht, sind für den Aufruf von process_perfdata.pl so gut wie keine Optionen nötig. Einzig bei Performance-Daten der Host-Checks ist die Option -d ( DATATYPE ) nötig. Wenn Sie die [[http://www.nagios-wiki.de/nagios/doku3/quickstart|Schnellstart-Installationsanleitungen]] für Nagios benutzt haben, können Sie die Definitionen in der Datei commands.cfg anpassen.
+
+<code>
+define command {
+       command_name    process-service-perfdata
+       command_line    /usr/bin/perl /usr/local/pnp4nagios/libexec/process_perfdata.pl
+}
+
+define command {
+       command_name    process-host-perfdata
+       command_line    /usr/bin/perl /usr/local/pnp4nagios/libexec/process_perfdata.pl -d HOSTPERFDATA
+}
+</code>
+
+**HINWEIS:** ''process_perfdata.pl'' kann nicht unter Kontrolle des ePN ( embedded Perl Nagios ) gestartet werden. Daher wird das Script explizit mit ''/usr/bin/perl'' aufgerufen. Wird ePN nicht verwendet oder wird Nagios 3.x verwendet, kann auf die Angabe von ''/usr/bin/perl'' verzichtet werden.
+
+[[start|zurück zur Übersicht]] | [[verify|Funktion prüfen]]
+
+===== Bulk Mode =====
+
+{{ :bulk.png?150|}}Der Bulk-Mode ist etwas komplizierter als der Synchronous-Mode, reduziert die Last auf dem Nagios Server jedoch merklich, da nun nicht mehr für jeden Service bzw. Host zusätzlich der Datensammler ''process_perfdata.pl'' gestartet werden muss.
+
+Im Bulk-Mode schreibt Nagios die Daten in einem definierten Format in eine temporäre Datei. Diese Datei wiederum wird periodisch von ''process_perfdata.pl'' verarbeitet. Um den Start und den Intervall kümmert sich dabei Nagios selbst.
+
+Auch hier muss die Verarbeitung der Performance-Daten in der ''nagios.cfg'' eingeschaltet werden.
+
+   process_performance_data=1
+
+Zusätzlich werden einige neue Parameter benötigt.
+
+<code>
+#
+# Service Performance-Daten
+#
+service_perfdata_file=/usr/local/pnp4nagios/var/service-perfdata
+service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$
+service_perfdata_file_mode=a
+service_perfdata_file_processing_interval=15
+service_perfdata_file_processing_command=process-service-perfdata-file
+
+#
+# Host Performance-Daten ab Nagios 3.x
+# 
+host_perfdata_file=/usr/local/pnp4nagios/var/host-perfdata
+host_perfdata_file_template=DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$
+host_perfdata_file_mode=a
+host_perfdata_file_processing_interval=15
+host_perfdata_file_processing_command=process-host-perfdata-file
+</code>
+
+**Achtung:** Die Template-Definitionen weichen von denen in der Original-nagios.cfg ab!
+
+Die Parameter und deren Bedeutung im Einzelnen:
+
+  * ''**service_perfdata_file**'' Der Pfad zur temporären Datei, in der die Daten gesammelt werden sollen.
+  * ''**service_perfdata_file_template**'' Das Format der temporären Datei. Hier werden die Daten über Nagios-Macros definiert.
+  * ''**service_perfdata_file_mode**'' Die Option "a" definiert, dass an die Datei angehangen werden soll.
+  * ''**service_perfdata_file_processing_interval**'' Das Intervall beträgt 15 Sekunden
+  * ''**service_perfdata_file_processing_command**'' das Command, das im definierten Intervall aufgerufen werden soll.
+
+Die verwendeten Commands müssen Nagios wiederum bekannt gegeben werden. Wenn Sie die [[http://www.nagios-wiki.de/nagios/doku3/quickstart|Schnellstart-Installationsanleitungen]] für Nagios benutzt haben, können Sie die Definitionen in der Datei commands.cfg anpassen.
+
+<code>
+define command{
+       command_name    process-service-perfdata-file
+       command_line    /usr/local/pnp4nagios/libexec/process_perfdata.pl --bulk=/usr/local/pnp4nagios/var/service-perfdata
+}
+
+define command{
+       command_name    process-host-perfdata-file
+       command_line    /usr/local/pnp4nagios/libexec/process_perfdata.pl --bulk=/usr/local/pnp4nagios/var/host-perfdata
+}
+</code>
+
+<box 90%|**HINWEIS:**> Da ''process_perfdata.pl'' nun mehr Daten zu verarbeiten hat als im Default Mode, kommt es natürlich auch zu längeren Laufzeiten. Daher ist der TIMEOUT Wert in der ''etc/process_perfdata.cfg'' zu überprüfen und ggf. anzupassen.</box>
+
+[[start|zurück zur Übersicht]] | [[verify|Funktion prüfen]]
+
+===== Bulk Mode with NPCD =====
+
+{{ :bulk-npcd.png?150|}}Die Konfiguration ist identisch mit dem "Bulk Mode", einzig das verwendete Command ist leicht abgewandelt.
+
+Auch hier muss die Verarbeitung der Performance-Daten in der ''nagios.cfg'' eingeschaltet werden.
+
+   process_performance_data=1
+
+Zusätzlich werden einige neue Parameter benötigt.
+
+<code>
+#
+# Service Performance-Daten
+#
+service_perfdata_file=/usr/local/pnp4nagios/var/service-perfdata
+service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$
+service_perfdata_file_mode=a
+service_perfdata_file_processing_interval=15
+service_perfdata_file_processing_command=process-service-perfdata-file
+
+#
+# Host Performance-Daten ab Nagios 3.x
+# 
+host_perfdata_file=/usr/local/pnp4nagios/var/host-perfdata
+host_perfdata_file_template=DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$
+host_perfdata_file_mode=a
+host_perfdata_file_processing_interval=15
+host_perfdata_file_processing_command=process-host-perfdata-file
+</code>
+
+**Achtung:** Die Template-Definitionen weichen von denen in der Original-nagios.cfg ab!
+
+Die Parameter und deren Bedeutung im Einzelnen:
+
+  * ''**service_perfdata_file**'' Der Pfad zur temporären Datei, in der die Daten gesammelt werden sollen.
+  * ''**service_perfdata_file_template**'' Das Format der temporären Datei. Hier werden die Daten über Nagios-Macros definiert.
+  * ''**service_perfdata_file_mode**'' Die Option "a" definiert, dass an die Datei angehangen werden soll.
+  * ''**service_perfdata_file_processing_interval**'' Das Intervall beträgt 15 Sekunden
+  * ''**service_perfdata_file_processing_command**'' das Command, das im definierten Intervall aufgerufen werden soll.
+
+Die verwendeten Commands müssen Nagios wiederum bekannt gegeben werden. Wenn Sie die [[http://www.nagios-wiki.de/nagios/doku3/quickstart|Schnellstart-Installationsanleitungen]] für Nagios benutzt haben, können Sie die Definitionen in der Datei commands.cfg anpassen.
+
+<code>
+define command{
+       command_name    process-service-perfdata-file
+       command_line    /bin/mv /usr/local/pnp4nagios/var/service-perfdata /usr/local/pnp4nagios/var/spool/service-perfdata.$TIMET$
+}
+
+define command{
+       command_name    process-host-perfdata-file
+       command_line    /bin/mv /usr/local/pnp4nagios/var/host-perfdata /usr/local/pnp4nagios/var/spool/host-perfdata.$TIMET$
+}
+</code>
+
+Durch die Kommandos wird immer nach Ablauf des über ''**service_perfdata_file_processing_interval**'' eingestellten Intervalls die Datei service-perfdata nach var/spool/ verschoben. Dabei wird das Nagios-Macro $TIMET$ verwendet, an den Dateinamen angehängt, um zu verhindern, dass alte Dateien ungewollt überschrieben werden. Das Macro $TIMET$ enthält den aktuellen Zeitstempel in Unix-Time-Format ( Sekunden seit 1.1.1970 ).
+
+Somit sammeln sich Dateien im Verzeichnis /usr/local/pnp4nagios/var/spool/, die nun mit Hilfe des NPCD verarbeitet werden.
+
+NPCD überwacht das Spool-Verzeichnis und übergibt wiederum alle gefundenen Dateien an ''process_perfdata.pl''. Damit ist die Verarbeitung der Performancedaten komplett von Nagios entkoppelt. Wir müssen nur noch den NPCD starten.
+
+   /usr/local/pnp4nagios/bin/npcd -d -f /usr/local/pnp4nagios/etc/npcd.cfg
+
+Die Option ''-d'' veranlasst NPCD im Hintergund als Daemon seinen Dienst zu verrichten.
+
+Das Init Script für den NPCD wir während der Installation über "make install-init" installiert und kann somit auch für den Start verwendet werden.
+
+   /etc/init.d/npcd start
+
+In der Config-Datei des NPCD, der ''npcd.cfg'', ist vor dem ersten Start zu prüfen, ob die Pfade zum Spool-Verzeichnis und zu ''process_perfdata.pl'' richtig gesetzt sind.
+
+Weitere Informationen zu NPCD findet ihr [[npcd|hier]].
+
+===== Bulk Mode with NPCD und npcdmod =====
+
+**Achtung**
+//Beginnend mit Nagios 4 haben sich die internen Strukturen geändert, so dass der Start des Moduls fehlschlägt. Bisher gibt es keine Pläne, Nagios 4 zu unterstützen. Bitte wählen Sie einen der anderen Modi.//
+
+{{ :bulk-npcdmod.png?150|}} Bei diesem Modus kommt das Eventbroker-Modul npcdmod.o zu Einsatz. Der Datenfluss ist jedoch identisch zum "Bulk Mode mit NPCD". Die internen Perfdata-Routinen von Nagios, die über die "*_perf_data_*" Optionen in der ''nagios.cfg'' konfiguriert werden, kommen **NICHT** mehr zu Einsatz. Das Modul npcdmod.o kümmert sich um die für PNP nötige Aufbereitung der Daten.
+
+Vorteil:
+  * Die Perfdata-Routinen innerhalb von Nagios stehen wieder für andere Addons zur Verfügung.
+  * Die Konfiguration reduziert sich.
+  * Die bevorzugte Methode der PNP-Entwickler.
+
+Anpassung in der ''nagios.cfg'':
+
+<code>
+process_performance_data=1
+broker_module=/usr/local/pnp4nagios/lib/npcdmod.o config_file=/usr/local/pnp4nagios/etc/npcd.cfg
+</code>
+
+Alle anderen auf dieser Seite gezeigten Optionen dürfen für diesen Modus **NICHT** mehr verwendet werden.
+
+**Achtung:** Wichtig sind in diesem Zusammenhang auch die ''event_broker_options'' bei einem von -1 abweichenden Wert. Für PNP müssen die Bits 2 und 3 gesetzt sein (0b01100; siehe auch http://www.nagios-wiki.de/nagios/ndo/eventbroker_optionen).
+ 
+Nach dem Neustart von Nagios werden Informationen zum Ladevorgang des Moduls protokolliert.
+
+Auszug aus den nagios.log
+<code>
+[1277545053] npcdmod: Copyright (c) 2008-2009 Hendrik Baecker (andurin@process-zero.de) - http://www.pnp4nagios.org
+[1277545053] npcdmod: /usr/local/pnp4nagios/etc/npcd.cfg initialized
+[1277545053] npcdmod: spool_dir = '/usr/local/pnp4nagios/var/spool/'.
+[1277545053] npcdmod: perfdata file '/usr/local/pnp4nagios/var/perfdata.dump'.
+[1277545053] npcdmod: Ready to run to have some fun!
+[1277545053] Event broker module '/usr/local/pnp4nagios/lib/npcdmod.o' initialized successfully.
+</code>
+
+===== Gearman Mode =====
+
+{{ :gearman.png?150|}}
+
+PNP4Nagios kann seit Version 0.6.12 als Gearman-Worker betrieben werden. So sind große verteilte Nagios-Umgebungen auf Basis von mod_gearman realisierbar. Außerdem kann man dadurch Nagios und PNP4Nagios auf unterschiedliche Rechner verteilen. 
+
+Benötigt wird eine fertig eingerichtete mod_gearman Installation wie von Sven Nierlein unter http://labs.consol.de/lang/en/nagios/mod-gearman/ beschrieben.
+
+In ''etc/process_perfdata.cfg'' gibt es einen gearman-Abschnitt:
+   PREFORK = 1
+   GEARMAN_HOST = localhost:4730
+   REQUESTS_PER_CHILD = 10000
+   ENCRYPTION = 1
+   KEY = should_be_changed
+   #KEY_FILE = /usr/local/pnp4nagios/etc/secret.key
+   
+Dort ist mit ''PREFORK = <n>'' die Anzahl der zu startenden Kindprozessen anzugeben.
+
+''GEARMAN_HOST = <host>:<port>'' definiert Rechner und Port, auf dem der gearman-Daemon die Daten bereitstellt.
+Über ''REQUESTS_PER_CHILD = <n>'' kann die maximal zu verarbeitende Anzahl von Anforderungen pro Prozess eingestellt werden.
+
+''ENCRYPTION = <1|0>'' stellt ein, ob Verschlüsselung benutzt werden soll. Die Standardeinstellung ist eine aktivierte Verschlüsselung ("1") und das sollte nur in Ausnahmefällen verändert werden.
+Dabei kann entweder über ''KEY = <Schlüssel>'' der zu benutzende Schlüssel definiert oder per ''KEY_FILE = <Schlüsseldatei>'' der Standort einer Schlüsseldatei angegeben werden.
+
+
+''/etc/init.d/pnp_gearman_worker'' enthält Verweise auf die Perl-Prozedur ''process_perfdata.pl'' sowie die Konfigurationsdatei ''process_perfdata.cfg''.
+
+
+Nach dem Start des PNP-Daemons per 
+
+   /etc/init.d/pnp_gearman_worker start
+
+werden die Performance-Daten verarbeitet, die über den gearmand-Daemon auf dem Nagios-Rechner zur Verfügung gestellt werden.
+
+[[start|zurück zur Übersicht]] | [[verify|Funktion prüfen]]

@@ -1,0 +1,88 @@
+====== PNP Web Frontend ======
+
+The behaviour of the PNP Web-Frontend can be controlled through the config file ''etc/config.php''. This file will be overwritten during updates of PNP as the paths and options are detected during ''./configure''.
+
+Own adjustments should be made in ''etc/config_local.php''. If this file does not exist the file config.php can be taken as a guideline.
+
+===== etc/config.php =====
+
+Following the most important parameters:
+
+The path to the RRDtool binary. Will be detected by ''./configure''
+
+   $conf['rrdtool'] = "/usr/bin/rrdtool";
+
+Height and width of the RRD graphs
+
+   $conf['graph_width'] = "500";
+   $conf['graph_height'] = "100";
+
+Screen sizes may vary, pages sizes won't. The following two directives enable you to specify different sizes for the creation of PDFs. If they aren't specified the values of the graph sizes are taken.
+
+   $conf['pdf_width'] = "675";
+   $conf['pdf_height'] = "100";
+
+Additional options passed with every call of RRDTool, for example ''--slope-mode'' to smooth the graphs
+
+   $conf['graph_opt'] = "";
+
+The path to the RRD and XML files created by ''process_perfdata.pl''
+
+   $conf['rrdbase'] = "/usr/local/pnp4nagios/var/perfdata/";
+
+The path to the config file for the [[pages]].
+
+   $conf['page_dir'] = "/usr/local/pnp4nagios/etc/pages/";
+
+----
+
+PNP pages will be refreshed every n seconds
+
+   $conf['refresh'] = "90";
+
+----
+
+Max. age of RRD files in seconds. After reaching this value links to the graphs will be marked as inactive
+
+   $conf['max_age'] = 60*60*6;
+
+----
+
+
+Base URL to the Nagios CGIs
+
+   $conf['nagios_base'] = "/nagios/cgi-bin";
+
+----
+List of users who are allowed to view links to the services of the current host
+
+   $conf['allowed_for_service_links'] = "EVERYONE";
+
+----
+
+List of users who can view/access the host search field
+
+   $conf['allowed_for_host_search'] = "EVERYONE";
+
+----
+
+If PNP is called with a host only ( index.php?host=<myserver> ), the defined user is shown an overview of all services related to this host
+
+   $conf['allowed_for_host_overview'] = "EVERYONE";
+
+----
+
+The periods of time the RRD graphs will show are determined using the array $views[]. The title and number of graphs can be specified globally in this place
+
+<code>
+$views[] = array('title' => 'One Hour',  'start' => (60*60) );
+$views[] = array('title' => '4 Hours',   'start' => (60*60*4) );
+$views[] = array('title' => '25 Hours',  'start' => (60*60*25) );
+$views[] = array('title' => 'One Week',  'start' => (60*60*25*7) );
+$views[] = array('title' => 'One Month', 'start' => (60*60*24*32) );
+$views[] = array('title' => 'One Year',  'start' => (60*60*24*380) );
+</code>
+
+You can add more views ($views[5], ...) but please keep in mind that under normal circumstances ALL views you defined are shown.
+
+[[start|back to contents]] | [[timeranges]]

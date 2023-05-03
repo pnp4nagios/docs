@@ -1,0 +1,11 @@
+====== Version der XML Struktur ist ungültig ======
+
+PNP prüft das Format der von process_perfdata.pl erstellten XML-Files durch definieren einer Versionsnummer.
+
+Über diesen Weg wird sichergestellt, dass die erstellten XML-Files auch verwendet werden können und die Versionen von process_perfdata.pl und Webfrontend kompatibel sind.
+
+Die Versionsummer wird nur bei grundlegenden Änderungen erhöht.
+
+Diese Fehler treten temporär nach einem Update mit XML-Änderung auf. Nachdem die XML-Files durch process_perfdata.pl neu geschrieben wurden, wird dieser Fehler nach einer Weile verschwinden (abhängig vom check_interval-Wert). 
+
+Sollte sich der Fehler hartnäckig halten, so ist zu prüfen, ob die verwendete process_perfdata.pl-Version zur Webfrontend-Version passt.

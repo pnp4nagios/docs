@@ -1,0 +1,26 @@
+~~NOTOC~~
+
+====== PNP4Nagios Dokumentation ======
+
+Die Domain doc.pnp4nagios.org wir in Zukunft die zentrale Drehscheibe rund um PNP sein.
+
+Hier ist bereits die Dokumentation zu PNP 0.4.x von www.pnp4nagios.org übernommen.\\
+Die Dokumentation zum Release 0.6.x entsteht parallel zur Entwicklung dieser Version.
+
+====== Die Dokumentation ist offen. ======
+
+Die folgenden Seiten sind von registrierten Usern editierbar.
+Erstellt euch einen Account und arbeitet am Projekt mit.
+
+Die existierenden Accounts wurden von www.pnp4nagios.org bereits übernommne und sind mit erweiterten Rechten aktiv.
+
+====== Mitarbeit ausdrücklich erwünscht ======
+
+PNP hätte sich laufe der Jahre nicht zu dem entwicklen können was es heute ist, ohne die zahlreichen Helfer, die teilweise nur im Hintergrund werkeln.
+
+Die Mitarbeit ist ausdrücklich erwünscht, auch wenn vielleicht nicht jede Funktion sofort umgesetzt werden kann. Mit Version 0.6.x wird sich das sicherlich durch die geänderte Architektur schnell ändern.
+
+Weiterhin ist diese Domain internationalisiert, sprich dieses Wiki kann in mehreren Sprachen gepflegt werden. Ich würde mich freuen en immer mehr Sprachen hinzu kommen würden.
+
+
+

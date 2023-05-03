@@ -1,0 +1,20 @@
+check_procs is an example for a plugin which doesn't deliver performance data:
+
+<code>./check_procs -a ndo2db -w 1: -c 0:
+PROCS OK: 2 processes with args 'ndo2db'</code>
+
+This can be changed with the following wrapper script
+
+**check_procs.sh**
+<code>#!/bin/bash
+LINE=`/usr/local/nagios/libexec/check_procs $*`
+RC=$?
+COUNT=`echo $LINE | awk '{print $3}'`
+PROCS=`expr $COUNT - 1`
+LINE=`echo $LINE | sed "s/: $COUNT /: $PROCS /"`
+echo $LINE \| procs=$PROCS
+exit $RC</code>
+
+Now you'll get the number together with the required label
+<code>./check_procs.sh -a ndo2db -w 1: -c 0:
+PROCS OK: 2 processes with args 'ndo2db'| procs=2</code>

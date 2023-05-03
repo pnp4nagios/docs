@@ -1,0 +1,18 @@
+====== Datenexport ======
+
+PNP bietet über den ''xport'' Controller Zugriff auf die RRD-Daten. Dabei kann das Ausgabeformat gewählt werden. Zur Zeit sind die Formate ''xml'', ''json'' und ''csv'' realisiert.
+
+Aufgerufen wird der Controller über die URL
+
+  /pnp4nagios/xport/<format>?host=<hostname>&srv=<servicedesc>
+
+wobei <format> durch das jeweils gewünschte Format zu ersetzen ist.
+
+Sie können außerdem ''wget'' benutzen, um Bilder zu erzeugen und diese in regelmäßigen Reports einzufügen. Ein Beispiel:
+  wget -O image.png 'http://<user>:<pass>@<nagios-server>/pnp4nagios/image?host=<hostname>&srv=<service>&view=2&source=0'
+''view=<n>'' begrenzt den Graphen auf die Zeitperiode, die in ''config.php'' definiert ist\\
+''source=<n>'' zeigt nur eine Data-Source, wenn mehrere in der RRD-Datei vorhanden sind
+
+Anstatt ''view'' können Sie auch ''start'' und/oder ''end'' benutzen, um die Zeitspanne anzugeben. Details finden Sie in den [[timeranges|"time ranges"]].
+
+[[start|zurück zur Übersicht]] | [[tpl|Templates]]

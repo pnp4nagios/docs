@@ -1,0 +1,3 @@
+===== page-config-dir =====
+
+No se ha encontrado fichero de configuración de página

@@ -1,0 +1,5 @@
+===== template-without-opt =====
+
+La plantilla usada para este equipo/servicio no devuelve a PNP el array $opt[].
+
+La ruta a la plantilla se muestra en el mensaje de error.

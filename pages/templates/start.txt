@@ -1,0 +1,16 @@
+====== PNP Template Repository ======
+
+The place to share your PNP Templates.
+
+^ PNP Version ^ Template Name       ^ Comment ^
+| 0.6.x       | [[integer]]      | Generic Template used for integer values   | 
+| 0.6.x       | [[check_apachestatus]] | Used with check_apachestatus.pl |
+| 0.6.x       | [[check_mk-df]] | Used with check_mk |
+| 0.6.x       | [[check_mk-cpu.loads]] | Used with check_mk |
+| 0.6.x       | [[check_http]] | Used with check_http |
+| 0.6.x       | [[check_cpu]] | Used with check_cpu |
+| 0.6.x       | [[check_oracle_health_tablespace-usage]] | Used with check_oracle_health |
+| 0.6.5       | [[alerter]] | Example for rrd::alerter function |
+| 0.6.5       | [[ticker]] | Example for rrd::ticker function |
+| 0.6.5       | [[gradient]] | Example for rrd::gradient function |
+| 0.6.x       | [[check_wlsagent]] | Used with check_wlsagent |

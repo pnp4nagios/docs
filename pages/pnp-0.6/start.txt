@@ -1,0 +1,80 @@
+====== Documentation ======
+
+<box 99% red centered>PNP4Nagios Broker Module npcdmod.o is not compatible with Nagios Core 4.x</box>
+
+{{ :pnp-0.6:gallery:pnp-preview-05-08-2009.png?215|Theme "smoothness"}}
+
+PNP is an addon to Nagios which analyzes performance data provided by plugins and stores them automatically into RRD-databases (Round Robin Databases, see [[http://www.rrdtool.org|RRD Tool]]).
+
+During development of PNP we set value on easy installation and little maintenance while running it. An administrator should do other things than configure graphing tools.
+
+To achieve this task we focused on using standards. PNP only processes performance data built according to the [[http://nagiosplug.sourceforge.net/developer-guidelines.html|Developer Guidelines]] for nagios plugins. With this limitation we want to honour the work of [[http://nagiosplugins.org|Nagios Plugin Developers]] who stick to the guidelines.
+
+For all of those who are still curious the following documentation is made which should help to ease the access to PNP.
+
+[[doc_complete|complete documentation on "one" page]]
+
+===== Documentation =====
+
+   * **About PNP**
+     * [[new-features|New features]]
+     * [[about#System requirements]]
+     * [[about#License]]
+     * [[about#Download]]
+     * [[about#Support]]
+     * [[about#Storage]]
+
+   * **Release Notes**
+     * [[dwnld|Download]]
+     * [[dwnld#Changelog|Changelog]]
+
+   * **Upgrade**
+     * [[upgrade|Upgrade from 0.4.x to 0.6.x]]
+     * [[migration|Migrate to new hardware/OS]]
+
+   * **Which mode is the right one ?**
+     * [[modes|Synchronous mode]]
+     * [[modes#bulk_mode|Bulk mode]]
+     * [[modes#bulk_mode_with_npcd|Bulk mode with NPCD]] 
+     * [[modes#bulk_mode_with_npcd_and_npcdmod|Bulk Mode with NPCD and npcdmod]]
+     * [[modes#gearman_mode|Gearman mode]]
+   * **Installation**
+     * [[install|Make and more]]
+     * [[install#update|Update]]
+     * [[install#the_components|The components]]
+   * **Configuration**
+     * [[config|Synchronous mode]]
+     * [[config#bulk_mode|Bulk mode]]
+     * [[config#bulk_mode_with_npcd|Bulk mode with NPCD]]
+     * [[config#bulk_mode_with_npcd_and_npcdmod|Bulk Mode with NPCD and npcdmod]]
+     * [[config#gearman_mode|Gearman mode]]
+   * **The first test / troubleshooting**
+     * [[verify|checking the functionality]]
+     * [[verify_pnp_config|verify_pnp_config helper script]]
+   * **Web Frontend**
+     * [[webfe|Nagios and PNP]]
+     * [[webfe|Action Url]]
+     * [[webfe_cfg|Config Options]]
+     * [[timeranges|Timeranges]]
+     * [[pages|Pages]]
+     * [[xport|Data export]]
+   * **PNP Templates**
+     * [[tpl|What are templates ?]]
+     * [[tpl|Which template is used when?]]
+     * [[tpl|Creating own templates]]
+     * [[tpl_custom|Custom templates]]
+     * [[tpl_special|Special templates (new in 0.6.5)]]
+     * [[tpl_helper|Helper functions (new in 0.6.5)]]
+     * [[tpl_helper_pnp|Helper functions, part II (new in 0.6.10)]]
+   * **Advanced Features**
+     * [[advanced|PNP in distributed environments]]
+     * [[advanced|check_multi support]]
+     * [[rrdcached|rrdcached support]]
+     * [[rrd_convert|migrating RRD files for use with RRD_STORAGE_TYPE = MULTIPLE]]   
+   * **NPCD**
+     * [[npcd|NPCD Details]]
+   * **Appendix**
+     * [[wrapper|wrapper script]]
+     * [[perfdata_format|performance data format]]
+   * **Helpers (unsupported)**
+     * [[ndo2pnp|NDO to PNP]]

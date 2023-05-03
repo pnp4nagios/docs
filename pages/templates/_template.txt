@@ -1,0 +1,15 @@
+===== @FILE@ =====
+
+==== Template Description ====
+
+
+==== Preview ====
+
+
+==== Template Code ====
+
+<file php @FILE@.php>
+<?php
+# Insert your Template here
+?>
+</file>

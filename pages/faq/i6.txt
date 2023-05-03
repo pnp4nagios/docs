@@ -1,0 +1,5 @@
+====== Function mbstring overload ======
+
+The function overloads the original PHP string functions.
+
+http://php.net/mbstring

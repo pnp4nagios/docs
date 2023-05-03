@@ -1,0 +1,18 @@
+====== Widgets ======
+
+**Verfügbar ab pnp4nagios-0.6.1**
+
+Über zwei Widgets lassen sich eigene Daten in das PNP-Webfrontend einbinden.
+
+  * share/application/views/widget_menu.php
+
+Dieses Widget wird im Menü eingeblendet.
+
+  * share/application/views/widget_graph.php
+
+Dieses Widget wird über dem ersten Graphen eingeblendet.
+
+Die Widgets liegen nach der Installation als Beispieldateien ( .sample.php ) vor und können bei Bedarf verwendet werden.
+
+Ziel dieser Widgets ist es, z.B. Links zu weiteren Informationen in die PNP-Weboberfläche einzubinden, ohne den Sourcecode von PNP verändern zu müssen.
+

@@ -1,0 +1,42 @@
+===== Distributed Systems =====
+If Nagios is implemented as a distributed system you have to decide where PNP should be installed.
+
+From a technical view this question is not important. PNP can be installed on the slave(s) as well as on the master server. Or only on the master?
+
+If PNP is running on the master you have to make sure that data passed via send_nsca from the slave server(s) contains performance data. Often another check command is used on the master.
+
+To help PNP on the master to recognize which check command was used on the slave to collect the information process_perfdata.pl responds to an additional field at the end of the performance data.
+
+<code>OK - 127.0.0.1: rta 2.687ms, lost 0% | rta=2.687ms;3000.000;5000.000;0; pl=0%;80;100;; [check_icmp]</code>    
+
+If PNP finds a string enclosed in brackets at the end of performance data it will be recognized as check command and will be used as PNP template.
+
+Nagios documentation related to this topic can be found
+[[http://nagios.sourceforge.net/docs/3_0/distributed.html|here]]. The command used in the documentation can be adapted easily.
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$'
+	}
+</code>
+
+should be changed to
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$ | $SERVICEPERFDATA$ [$SERVICECHECKCOMMAND$]'
+	}
+</code>
+
+
+===== check_multi plugin=====
+
+The plugin [[http://my-plugin.de/wiki/projects/check_multi/start|check_multi]] is one of the first plugins which uses new features of Nagios 3.x. Check_multi can execute multiple Nagios plugins but returns only results like a single service. The output of check_multi comprises of several lines to be able to display the amount of information.
+
+This results in some difficulties for PNP which has to extract the information of several plugins from the performance data. Together with Matthias Flacke, developer of check_multi, we have found a solution to assign the data to the appropriate plugins.
+
+{{http://my-plugin.de/wiki/_media/check_multi/performance/multi_labels.png?300}}
+
+[[start|back to contents]] | [[rrdcached|support of rrdcached]]

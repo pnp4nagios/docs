@@ -1,0 +1,18 @@
+===== perfdata-dir-for-host =====
+
+PNP was called with a host in the URL.
+
+Example:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+The resulting path to the perfdata directory could not be found.
+
+The path is shown in the error message.
+
+''var/perfdata/<this-host>'' will be created by process_perfdata.pl when it processes performance data for this host.
+
+If this directory does not exist there are several possible causes:
+
+  * Passing an incorrect host name in the URL
+  * The host has no valid performance data
+  * None of the services has valid performance data

@@ -1,0 +1,10 @@
+====== Keine Services gefunden ======
+
+PNP wurde zwar mit der Angabe eines Hosts aufgerufen, jedoch ohne Definition eines Services.
+
+Beispiel URL:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+Dabei war es PNP nicht möglich, einen Service zu ermitteln.
+
+Möglicherweise ist ''var/perfdata/<this-host>/'' leer.

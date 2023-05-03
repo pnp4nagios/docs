@@ -1,0 +1,11 @@
+===== magic_quotes_gpc =====
+
+http://php.net/manual/en/security.magicquotes.php
+
+<box red 99% | magic_quotes_gpc>This feature has been DEPRECATED as of PHP 5.3.0 and REMOVED as of PHP 6.0.0. Relying on this feature is highly discouraged</box>
+
+Locate your php.ini ( Debain/Ubuntu/SuSE: /etc/php5/apache2/php.ini, Fedora/CentOS: /etc/php.ini, FreeBSD: /usr/local/etc/php.ini ) and set 
+
+   magic_quotes_gpc = Off
+   
+Restart your Apache Webserver to activate the new settings.

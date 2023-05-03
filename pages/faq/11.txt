@@ -1,0 +1,18 @@
+===== xml-structure-without-version-tag =====
+
+Starting with PNP 0.6 a version tag was introduced. This message indicated that this tag is missing. After all the xml file seems to be created by a PNP version < 0.6.
+
+If this error occurs directly after an update it should be sufficient to wait for the next Nagios check after which the xml file will be newly created.
+
+If the error persists the cause may be an old version of ''process_perfdata.pl''.
+
+Snippet of the XML structure:
+
+<code>
+<NAGIOS>
+...
+  <XML>
+   <VERSION>4</VERSION>
+  </XML>
+</NAGIOS>
+</code>

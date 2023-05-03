@@ -1,0 +1,69 @@
+====== The art of collecting data ======
+
+PNP supports several modes to process performance data. The modes differ in complexity and the performance to be expected.
+
+The following image shows the connections between Nagios, PNP and RRDtool\\
+
+Nagios invokes a command for every host and every service whose performance data should be processed. Depending on the mode you choose the data will be passed to process_perfdata.pl or will be written to temporary files and processed at a later time. process_perfdata.pl writes the data to XML files and stores them in RRD files using RRDtool.\\
+
+Before you choose a mode please read the documentation and decide which way will be the best for installation.
+
+
+====== The modes in comparison =====
+
+===== Synchronous Mode =====
+
+{{:synchronous.png?150 |}}The "synchronous mode" is the simplest and easiest to set up. Nagios will call the perl script ''process_perfdata.pl'' for every service and host, respectively, to process the data. The synchronous mode will work very good up to about 1.000 services in a 5 minute interval.
+
+
+===== Bulk Mode =====
+
+{{:bulk.png?150 |}}In bulk mode Nagios writes the necessary data to a temporary file. After expiration of a defined time the file will be processed in one piece and deleted afterwards.
+
+The number of calls of process_perfdata.pl will be reduced to a fraction. Depending on time and the amount of collected data there will be much less system calls. Instead, process_perfdata.pl will run longer.
+
+**Note**
+Using this mode you should keep an eye on the runtime of process_perfdata.pl. While it is running to process data nagios will not execute any checks.
+
+snippet of var/perfdata.log:
+<code>
+2007-10-18 12:05:01 [21138] 71 Lines processed
+2007-10-18 12:05:01 [21138] .../spool/service-perfdata-1192701894-PID-21138 deleted
+2007-10-18 12:05:01 [21138] PNP exiting (runtime 0.060969s) ...
+</code>
+
+71 lines were processed in 0.06 seconds. This will be the data volume of about 2000 services und processing using a 10 second interval. It means we blocked nagios for exactly 0.06 seconds.
+
+
+===== Bulk Mode with NPCD =====
+
+{{:bulk-npcd.png?150 |}}Viewing from Nagios this is the best way of processing because Nagios will not be blocked.
+
+Nagios again uses a temporary file to store the data and executes a command after expiration of a certain time. Instead of immediate processing by process_perfdata.pl the file is moved to a spool directory. As moving a file inside the same filesystem nearly takes no time nagios is able to execute crucial work immediately.
+
+The NPCD daemon (Nagios Performance C Daemon) will monitor the directory for new files and will pass the names to process_perfdata.pl. Processing of performance data is decoupled completely from nagios. NPCD itself is able to start multiple thread for processing the data.
+
+
+===== Bulk Mode with npcdmod =====
+
+**Attention**
+//Starting with Nagios 4 the internal structures have changed so the start of the module will fail. So far there are no plans to support Nagios 4. Please select any other of the modes.//
+
+{{:bulk-npcdmod.png?150 |}} This scenario includes npcdmod.o, an NEB-module.
+This module reduces the configuration of the "Bulk Mode with NPCD" to a mere two lines in nagios.cfg
+
+This mode is similar to "Bulk Mode with NPCD" and it is exactly the same functionality and the same performance.
+
+
+===== Gearman Mode =====
+
+{{:gearman.png?150 |}}
+
+Since version 0.6.12 PNP4Nagios can be driven as a gearman worker. This way large Nagios environments are possible using mod_gearman. Nagios and PNP4Nagios can be run on different machines.
+
+You need a mod_gearman environment up and running like described by Sven Nierlein on http://labs.consol.de/lang/en/nagios/mod-gearman/.
+
+===== The decision =====
+Which mode you choose will depend on the size of your Nagios installation. You will find theses terms throughout the documentation.
+
+[[start|back to contents]] | [[install|installation]]

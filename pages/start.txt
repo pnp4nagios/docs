@@ -1,0 +1,31 @@
+~~NOTOC~~
+<box 99% red centered>PNP4Nagios-0.6.26 is out now. [[pnp-0.6:dwnld|Go and check for changes!]]</box>
+
+<box 99% red centered>PNP4Nagios Broker Module npcdmod.o is not compatible with Nagios Core 4.x</box>
+
+====== PNP4Nagios Documentation ======
+
+In the future the domain doc.pnp4nagios.org will be the central documentation platform for PNP.
+
+The documentation of PNP 0.4.x is already transferred from www.pnp4nagios.org.\\
+The documentation of PNP 0.6.x will be extended parallel to the development of this version.
+
+====== Social Coding ======
+
+[[http://github.com/lingej/pnp4nagios|{{:github.png |}}]] The 0.6.x Code is controlled by GIT SCM located on [[:pnp-0.6:dwnld|Sourceforge]]. You can also find a synced version of this repository on Github. Feel free to fork your own Repo!
+
+====== The documentation is open ======
+
+The following pages are editable by registered users.
+Create an account and contribute to the project.
+
+====== Contribution welcome ======
+
+PNP wouldn't be where it it today without the numerous people who contributed over the last years, sometimes only in the background.
+
+Contribution is explicitly welcome, even when not every function can be implemented at once. Starting with version 0.6.x this will change due to the changed architecture.
+
+Furthermore this domain now supports multiple languages so I would be happy if other people add their native language.
+
+
+

@@ -1,0 +1,20 @@
+====== Das Perfdata-Verzeichnis für diesen Host existiert nicht ======
+
+PNP wurde mit Angabe eines Hosts in der URL aufgerufen.
+
+Beispiel URL:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+Der daraus resultierende Pfad zum Perfdata-Verzeichnis konnte nicht gefunden werden.
+
+Der Pfad ist aus der Fehlermeldung zu entnehmen.
+
+''var/perfdata/<this-host>'' wird automatisch von process_perfdata.pl beim Verarbeiten von Performance-Daten für diesen Host angelegt.
+
+Sollte dieses Verzeichnis nicht existieren, kommen folgende Möglichkeiten in Betracht.
+
+  * Übergabe eines falschen Host-Namen in der URL.
+  * Für diesen Host wurden noch nie Performance-Daten übergeben.
+  * Kein einziger Service dieses Hosts liefert gültige Performance-Daten. 
+
+  

@@ -1,0 +1,27 @@
+2.6. Datos de rendimiento
+
+Los datos de rendimiento son definidos por Nagios como "cualquier cosa después de | en los valores de salida del plugin" - refiérase a la documentaación de Nagios para información sobre la captura de estos datos a ficheros log. De cualquier forma, es responsabilidad del escritor del plugin, asegurar que los datos de rendimiento están en el formato esperado. Este es el formato esperado:
+
+'etiqueta'=valor[UOM];[warn];[crit];[min];[max]
+
+Notas:
+
+   - listas separadas por espacios de parejas de etiqueta/valor
+   - //etiqueta// puede contener cualquier carácter
+   - comillas simples para las etiquetas son opcionales. Se requieren si hay presentes en la etiqueta espacios, = o '
+   - la longitud de la etiqueta es arbitraria, idealmente sólo los primeros  19 caracteres son únicos (debido a una limitación de RRD). Tenga cuidado de la limitación en la cantidad de datos que NRPE devuelve a Nagios
+   -  para especificar un carácter de comilla, use dos comillas simples
+   -  //warn//, //crit//, //min/ o //max/ pueden ser nulos(por ejemplo, si el umbral no está definido, o los mín y máx no aplican). Punto y coma finales sin relleno se pueden quitar
+   - valores min y max no se requieren si UOM=%
+   - valores, min y max en rango [-0-9.]. Deben ser de la misma UOM
+   - warn y crit en un formato de rango (ver Sección 2.6). Deber ser de la misma UOM
+   - UOM (unidad de medida) es una de:
+      * sin unidad especificada - se asume un número (int o float) de cosas (ej, usuarios, procesos, cargas medias)
+      * s - segundos (también us, ms)
+      * % - porcentaje
+      * B - bytes (también KB, MB, TB, GB?)
+      * c - un contador continuo (como los bytes transmitidos por un interfaz)
+
+Corresponde a los programas de terceros convertir los datos de rendimiento de los plugins de Nagios  en gráficos.
+
+Origen: [[https://www.monitoring-plugins.org/doc/guidelines.html#AEN200]]

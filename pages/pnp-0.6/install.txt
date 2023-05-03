@@ -1,0 +1,119 @@
+====== Installation ======
+The installation of PNP will be described in more detail. It is expected that nagios was compiled from source and is located in /usr/local/nagios.\\ 
+**Attention:** The description applies to the developer version PNP 0.6.0.\\ 
+Please note that PNP has to be configured after the installation.
+
+===== Make and more =====
+The installation of PNP is controlled by [[wpde>makefile]]s. The system is analyzed after invocation of ./configure and the detected values are tranferred to makefiles.
+
+Please unpack PNP as user root:
+<code>
+tar -xvzf pnp4nagios-HEAD.tar.gz
+cd pnp4nagios
+</code>
+
+./configure is to be called from the directory pnp4nagios.
+
+<code>
+./configure
+</code>
+**Note:** Without specifying any options user and group will be "nagios". If you have different values then please use the parameters "--with-nagios-user" and "--with-nagios-group", respectively. Using  Icinga the call might be
+<code>
+./configure --with-nagios-user=icinga --with-nagios-group=icinga
+</code>
+Some lines run across the screen. The output at the end is important.
+
+<code>
+*** Configuration summary for pnp4nagios-0.6.2 23-12-2009 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/pnp4nagios
+  HTML Dir:                         /usr/local/pnp4nagios/share
+  Config Dir:                       /usr/local/pnp4nagios/etc
+  Location of rrdtool binary:       /usr/bin/rrdtool Version 1.2.12
+  RRDs Perl Modules:                FOUND (Version 1.2012)
+  RRD Files stored in:              /usr/local/pnp4nagios/var/perfdata
+  process_perfdata.pl Logfile:      /usr/local/pnp4nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/pnp4nagios/var/spool
+
+  Web Interface Options:  -------------------------         -------------------
+  HTML URL:                         http://localhost/pnp4nagios/
+  Apache Config File:               /etc/apache2/conf.d/pnp4nagios.conf
+
+
+  Review the options above for accuracy.  If they look okay,
+  type 'make all' to compile.</code>
+
+The paths shown should be checked. If the displayed values aren't correct you can change them calling ./configure with appropriate options.\\ 
+**Attention:** "Location of rrdtool binary" means path including name of binary! If necessary it can be specified using the following syntax:
+
+   ./configure --with-rrdtool=/usr/local/rrdtool-1.2.xx/bin/rrdtool
+
+   ./configure --help 
+
+shows the supported options.\\ \\ 
+
+Invoking
+   make all
+
+compiles the components like NPCD which are written in C
+
+   make install
+
+copies everything to the right places in the file system. The paths were already shows during ./configure.
+
+After the installation of the program and HTML files you can copy a sample Apache configuration file to your web-server config directory
+
+   make install-webconf
+
+You can call
+
+   make install-config
+
+optionally. This way config files for process_perfdata.pl and npcd are copied to etc/pnp.
+
+To install the NPCD Init script call
+
+   make install-init
+
+All these steps are combined in
+
+   make fullinstall
+
+**Note:** As already stated the Nagios settings will be used per default. If you are using Icinga the file '/etc/apache2/conf.d/pnp4nagios.conf' has to be edited to change the path to AuthUserFile (the path may differ between distributions): 
+<code>#       AuthUserFile /usr/local/nagios/etc/htpasswd.users
+        AuthUserFile /usr/local/icinga/etc/htpasswd.users</code>
+
+**Attention:** After copying the configuration file for the web server you have to restart the web server (''service httpd restart'' or ''/etc/init.d/apache2 restart'', respectively).
+
+===== Update =====
+
+The update of a 0.6.x version works (nearly) the same way as an installation. Please note that you have to call ''./configure'' with the same options you used during the first installation.
+Please check if you changed anything in the folder ''share/templates.dist''. Own templates should be placed in ''share/templates'' to avoid being overwritten.\\ 
+**Attention**: If you changed config.php then you should save this file before it is overwritten when you execute ''make install-config''.
+
+You can skip ''make install-webconf'' and ''make install-init'' because nothing changed between 0.6.x versions.
+
+===== The components =====
+
+After installation the components of PNP were copied to the appropriate places in the file system. These are
+
+the PHP-Files for the web-frontend below
+
+   /usr/local/pnp4nagios/share
+
+the data collector process_perfdata.pl in 
+
+   /usr/local/pnp4nagios/libexec
+
+sample config files with the suffix ''-sample'' in
+
+   /usr/local/pnpnagios/etc
+
+the config file config.php for the web frontend in 
+
+   /usr/local/pnp4nagios/etc
+
+[[start|back to contents]] | [[config|configuration]]

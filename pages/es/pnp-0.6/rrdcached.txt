@@ -1,0 +1,82 @@
+====== Demonio RRDtool ======
+
+En instalaciones grandes, más pronto o más tarde,  se observará que el procesamiento de los datos de rendimiento se traduce en una carga relativamente alta de E/S. RRDtool necesita hacer cambios con frecuencia en los archivos de disco, pero no puede utilizar la caché de disco de una manera óptimas.
+
+Se ha hecho una mejora en la recolección y clasificación de los datos. Es más efectivo escribir muchas actualizaciones a una base de datos RRD en un sólo bloque. La caché de disco puede ser así usada de forma más eficiente. 
+
+La herramienta RRDtool actual ( [[http://oss.oetiker.ch/rrdtool-trac/browser/trunk/program|SVN trunk 1550+]] ) contiene rrdcached que mejora esta situación de la manera descrita anteriormente.
+
+En este punto me gustaría dar las gracias a Florian octo Forster, Kevin Brintnall y Tobi Oetiker. El desarrollo de este demonio ha sido coordinado de forma ejemplar en la lista de correo [[http://www.mail-archive.com/rrd-developers@lists.oetiker.ch/index.html|rrd-developers]].
+===== Modo de funcionamiento =====
+
+El demonio rrdcached trabaja en segundo plano y abre un socket UNIX o TCP esperando peticiones de rrdtool.
+==== rrdcached ====
+
+rrdcached procesa algunas opciones importantes pasadas en el inicio del mismo.
+
+Opción -l define el socket en el que escuchará el demonio para peticiones de actualización. El puerto TCP por defecto es 42217.
+
+<code>
+-l unix:/path/to/rrdcached.sock
+-l 127.0.0.1
+-l 127.0.0.1:8888
+</code>
+
+Opción -L es un socket sin privilegios que sólo dispara el comando FLUSH para escribir a las bases de datos RRD mediante el demonio.
+
+<code>-L 127.0.0.1</code>
+
+Opción -w especifica el intervalo (en segundos) en la que los datos debe ser escritos a disco.
+
+<code>-w 1800</code>
+
+Opción -z define el máximo retraso que se usará para extender los ciclos de escritura sobre un cierto rango [0-delay] para evitar accesos de escritura en paralelo. El valor de -z no debe ser mayor que el de -w.
+
+<code>-z 1800</code>
+
+Opción -p define el fichero PID
+
+<code>-p /var/run/rrdcached.pid</code>
+
+Opción -j define la ruta a un directorio con journaling. Todas las peticiones serán grabadas, de tal forma que se puedan procesar en caso de reinicio por un fallo del demonio.
+
+<code>-j /var/cache/rrdcached</code>
+
+Estas opciones harían que llamásemos a rrdcached con los siguientes parámetros
+
+<code> rrdcached -w 1800 -z 1800 -p /tmp/rrdcached.pid -j /tmp -l 127.0.0.1</code>
+
+==== rrdtool ====
+
+RRDtool es informado del demonio mediante la opción --daemon=<socket>.
+
+   rrdtool --daemon=127.0.0.1 update ...
+
+¡Por supuesto esto debe corresponder con las opciones de rrdcached!
+===== Integración en PNP =====
+
+Debido a que dos componentes de PNP tieneN que ser preparados para el uso de rrdcached se tienen que realizar cambios en dos archivos de configuración.
+
+1. Ajuste en process_perfdata.cfg para el recolector de datos process_perfdata.pl 
+
+<code>
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+RRD_DAEMON_OPTS = 127.0.0.1:8888
+</code>
+
+2. Ajustes de config_local.php (o config.php) para el interfaz web
+
+<code>
+#
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+# $conf['RRD_DAEMON_OPTS'] = 'unix:/tmp/rrdcached.sock';
+$conf['RRD_DAEMON_OPTS'] = '127.0.0.1:8888';
+</code>
+
+Los ficheros de ejemplo contienen las opciones relevantes.
+
+[[start|volver a contenidos]] | [[npcd|Detalles de NPCD]]

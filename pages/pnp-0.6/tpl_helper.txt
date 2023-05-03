@@ -1,0 +1,147 @@
+====== Template Helper Functions ======
+
+Helper functions are meant to simplify the creation of templates and trap errors
+
+===== rrd::def =====
+
+string **rrd::def** ( $vname, $rrdfile, $ds, [ $cf='AVERAGE' ] )
+
+<code php>
+$def = rrd::def('var1', $RRDFILE[0], $DS[0], 'MAX'); 
+</code>
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_data.en.html
+
+===== rrd::cdef =====
+
+string **rrd::cdef** ( $vname, $rpn, )
+
+<code php>
+$def = rrd::cdef('var1_bits', 'var1,8,*' ); 
+</code>
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_data.en.html
+
+===== rrd::vdef =====
+
+string **rrd::vdef** ( $vname, $rpn, )
+
+<code php>
+$def = rrd::vdef('var1_avg', 'var1,AVERAGE' ); 
+</code>
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_data.en.html
+
+===== rrd::line[1-3] =====
+
+string **rrd::line[1-3]** ( $vname, $color, [ $text ], [ $stack ] )
+
+<code php>
+$def .= rrd::line1('var1', #ff00ff ); 
+</code>
+
+Draws a simple line one pixel wide without label
+
+<code php>
+$def .= rrd::line3('var1', '#ff00ff', 'Load' ); 
+</code>
+
+Draws a line three pixels wide with label "Load"
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_graph.en.html
+
+===== rrd::area =====
+
+string **rrd::area** ( $vname, $color, [ $text ], [ $stack ] )
+
+<code php>
+$def .= rrd::area('var1', '#ff00ff', 'Load' ); 
+</code>
+
+Draws an area with label "Load"
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_graph.en.html
+
+===== rrd::gprint =====
+
+string **rrd::gprint** ( $vname, $cf, [ $text ] )
+
+<code php>
+$def .= rrd::gprint('var1', 'MAX', '%4.2lf %s Max' ); 
+</code>
+
+<code php>
+$def .= rrd::gprint('var1', array('MIN', 'MAX', 'AVERAGE'), '%4.2lf %s' ); 
+</code>
+
+If $cf is an array the legend will be formatted automatically
+
+http://oss.oetiker.ch/rrdtool/doc/rrdgraph_graph.en.html
+
+===== rrd::color =====
+
+string **rrd::color** ( $num [, $num])
+
+Returns a color from the HTML color table. The second (optional) argument allows to specify an alpha value used to set the transparency of the selected color.
+
+Starting with PNP 0.6.18 the function accepts a third argument which refers to colour scheme definitions in ''config.php'' (or ''config_local.php'' which is update safe). There you can find the array $scheme[], e.g. <code>$scheme['Reds'] = array (...)</code>Within the template you define <code>$schema = $this->config->scheme['Reds'];
+...
+rrd::color ($key, '', $schema);</code>This way you select the value taken from $scheme['Reds'][$key]. If $key is not within the array or you misspelled the name (**case sensitive**) then the default colour palette is used.
+
+===== rrd::gradient =====
+
+string **rrd::gradient** ( $vname, [$start_color], [$end_color], [$label], [$steps], [$lower] )
+
+Creates a color gradient from $start_color to $end_color
+
+<code php>
+$def .= rrd::gradient('var1', '#ff0000', '#ffff00' ); 
+</code>
+[[templates:gradient|Example]]
+
+===== rrd::cut =====
+
+string **rrd::cut** ( $text, $length )
+
+<code php>
+$label = rrd::cut($LABEL[0], 18); 
+</code>
+
+Cuts a text to a given length $length or fills it up to $length if needed.\\ 
+This function is helpful if legend needs to be justified but length of label is unknown.
+
+===== rrd::ticker =====
+
+string **rrd::ticker** ( $vname, $warning, $critical, [$fraction], [$opacity], [$color_OK], [$color_WARN], [$color_CRIT] )
+
+Creates a colorized bar at the top of the chart which shows different colors depending on states OK, WARNING & CRITICAL
+
+<code php>
+$def .= rrd::ticker( "var1", $WARN[0], $CRIT[0] );
+
+</code>
+[[templates:ticker|Example]]
+
+===== rrd::alerter =====
+
+string **rrd::alerter** ( $vname, $label, $warning, $critical, [$opacity], [$unit], [$color_OK], [$color_WARN], [$color_CRIT], [$line_col] )
+
+Creates colorized areas, which show different colors depending on states OK, WARNING & CRITICAL
+
+<code php>
+$def .= rrd::alerter( "var1", $LABEL[0], $WARN[0], $CRIT[0], "FF", $UNIT[0] );
+</code>
+
+[[templates:alerter|Example]]
+
+===== rrd::alerter_gr =====
+
+string **rrd::alerter_gr** ( $vname, $label, $warning, $critical, [$opacity], [$unit], [$color_OK], [$color_WARN], [$color_CRIT], [$line_col], [$start_color] )
+
+Creates colorized gradients, which show different colors depending on states OK, WARNING & CRITICAL
+
+<code php>
+$def .= rrd::alerter_gr( "var1", $LABEL[0], $WARN[0], $CRIT[0], "FF", $UNIT[0] );
+</code>
+
+[[templates:alerter_gr|Example]]

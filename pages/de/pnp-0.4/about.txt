@@ -1,0 +1,103 @@
+====== Über PNP ======
+
+
+
+
+
+
+
+
+===== Anforderungen an Plugins=====
+
+PNP benötigt zwingend gültige Performancedaten von Nagios Plugins.
+
+Was sind also diese Performancedaten?
+
+Die Ausgabe eines Nagios Plugins darf bis Nagios 2.x maximal eine Zeile betragen. Diese Ausgabe wird, wenn das Plugin Performancedaten liefert, in zwei Teile zerlegt. Als Trennzeichen dient dabei das Pipe "|" Symbol.
+
+**Beispiel check_icmp :** 
+
+   OK - 127.0.0.1: rta 2.687ms, lost 0% | rta=2.687ms;3000.000;5000.000;0; pl=0%;80;100;;
+
+daraus ergibt sich der Output auf der linken Seite des Pipe Symbols
+
+   OK - 127.0.0.1: rta 2.687ms, lost 0%
+
+und die Performancedaten
+
+    rta=2.687ms;3000.000;5000.000;0; pl=0%;80;100;;
+
+Wie man unschwer erkennt, sind die Performancedaten auf die maschinelle Verarbeitung ausgelegt. Das Format ist in den
+ [[http://nagiosplug.sourceforge.net/developer-guidelines.html#AEN203|Developer Guidelines]] 
+festgelegt, soll aber hier noch einmal kurz erläutert werden.
+
+    rta=2.687ms;3000.000;5000.000;0;
+     |    |  |    |         |     | |
+     |----|--|----|---------|-----|-|----- * Label 
+          |--|----|---------|-----|-|----- * Aktueller Wert
+             |----|---------|-----|-|----- Einheit ( UOM = UNIT of Measurement ) 
+                  |---------|-----|-|----- Warning Schwellwert
+                            |-----|-|----- Critical Schwellwert 
+                                  |-|----- Minimum Wert 
+                                    |----- Maximum Wert
+                                    
+Mit * gekennzeichnete Werte müssen vorhanden sein. Alle anderen Werte sind optional.
+
+Mehrere Datenreihen werden durch Leerzeichen getrennt. Die eigentlichen Daten dürfen also keine Leerzeichen enthalten. Soll das Label Leerzeichen enthalten, so müssen diese in einfache Hochkomma eingeschlossen werden.
+
+
+
+
+
+
+===== Benötigte Software =====
+
+  * Perl >= 5.x ohne besondere Module
+  * RRDtool ab 1.x; besser 1.2, aber nicht zwingend\\ Achtung: wird RRDtool ohne Paket-Manager installiert, fehlen anschließend möglicherweise die dejavu-Fonts. Das äußert sich z.B. durch fehlende Schriften in den Grafiken
+  * PHP >= 4.3.10 für das Webfrontend
+    * PHP Erweiterung zlib und GD.
+  * Nagios 2.x oder höher
+
+===== Lizenz =====
+
+PNP ist unter der [[http://www.gnu.de/documents/gpl-2.0.de.html|GPL 2]] lizensiert.
+
+
+===== Download =====
+
+Die Entwicklung von PNP wird auf [[http://sourceforge.net/projects/pnp4nagios|Sourceforge.Net]] organisiert. PNP ist dort unter dem Projektnamen PNP4nagios registriert.
+
+Die jeweils aktuelle Version findet ihr im [[http://sourceforge.net/project/showfiles.php?group_id=191615|Downloadbereich]].
+
+Wer noch aktueller sein möchte, kann auch die jeweils letzte Entwickler-Version benutzen.
+
+Die Entwickler ( devel ) Version wird täglich automatisch aus dem SVN Repository erstellt. Die Seite ist nur in englischer Sprache verfügbar, aber dafür immer aktuell.
+
+[[dwnld|PNP Devel Version]]
+
+===== Support =====
+
+Bitte stellen Sie VOR Support-Anfragen sicher, dass Sie die unter [[verify|Prüfen der Installation]] genannten Punkte geprüft haben.\\ \\ 
+Deutscher Support ist im [[http://www.nagios-portal.de|Nagios Portal]] zu erhalten. Über Beiträge im dortigen PNP-Forum werden die Entwickler sofort per Mail informiert. Bitte nutzen Sie zuerst die Suchfunktion.\\ 
+Bitte füllen Sie nach der Anmeldung als Benutzer Ihr Profil aus. Auf diese Weise entfallen Nachfragen bzgl. eingesetztem Betriebssystem, PNP-Version u.ä. Bitte geben Sie ebenfalls an, ob Sie PNP aus einem Package oder aus den Sourcen installiert haben.\\
+
+Erfolgreich gelöste Probleme kennzeichnen Sie bitte mit einem [solved] in der Betreffzeile des ersten Beitrags. Auf diese Weise erleichtern Sie anderen Benutzern das Finden von Lösungen zu ihrem Problem.
+
+Weiterhin können die Mailinglisten auf Sourceforge verwendet werden. Dort ist es jedoch üblich, Fragen auf Englisch zu stellen. Bitte geben Sie dort das verwendete Betriebssystem und die eingesetzte PNP-Version an.
+
+[[https://lists.sourceforge.net/lists/listinfo/pnp4nagios-users|pnp4nagios-users]]: Die Users Liste für allgemeine Fragen zur Konfiguration.
+
+[[https://lists.sourceforge.net/lists/listinfo/pnp4nagios-devel|pnp4nagios-devel]]: Die Devel Liste für Anregungen und Fehler Reports.
+
+[[https://lists.sourceforge.net/lists/listinfo/pnp4nagios-checkins|pnp4nagios-checkins]]: Auf der Checkins Liste werden Änderungen im SVN Repository automatisch veröffentlicht. 
+
+
+=====Speicherung=====
+
+Die Performance-Daten werden mit Hilfe von [[http://www.rrdtool.org|RRDtool]] in sogenannten Round-Robin-Datenbanken gespeichert, die wie ein Ringpuffer funktionieren. Das bedeutet, dass nach einer gewissen Zeit die ältesten Daten "hinten" herausfallen und "vorne" durch neue ersetzt werden.
+
+Verschiedene Zeitintervalle innerhalb der Datei sorgen für unterschiedliche Auflösungen. In der Standardeinstellung können die Daten für die letzten zwei Tage im Minutenabstand abgelegt werden, für zehn Tage im 5-Minutenabstand, für 90 Tage im 30-Minutenabstand und für 4 Jahre im 6-Stundenabstand. Die Vergrößerung des Intervalls bewirkt, dass auch die Daten über das jeweils größere Intervall hinweg gemittelt werden. Das führt automatisch dazu, dass Spitzen nicht mehr so deutlich zu sehen sind. Das ist kein Fehler von PNP, sondern eine Eigenheit von RRDtool.
+
+Durch die Speicherung in diesem Format ändert sich die Dateigröße nach dem Anlegen nicht mehr. Pro Datenreihe werden ca. 400 KB benötigt.
+
+[[start|Zurück zur Übersicht]] | [[modes|PNP-Modi]]

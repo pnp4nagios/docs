@@ -1,0 +1,94 @@
+====== Special Templates ======
+Seit PNP-Version 0.4.13 gibt es sogenannte „special“-Templates, die unter share/pnp im Ordner templates.special abgelegt werden. Auch dabei handelt es sich wieder um PHP-Code. Der Unterschied zu „normalen“ Templates besteht darin, dass in special-Templates Datenreihen aus unterschiedlichen RRD-Dateien ausgewählt werden können. Die Selektion erfolgt über die Funktion ''tpl_getdata'' mit Hilfe von regulären Ausdrücken, die separat für Host-Namen, Service-Beschreibungen und Check-Kommandos angegeben werden können:\\ 
+
+<code>$_list = tpl_getdata("<Hosts>","<Services>","<Check-Commands>");</code>Durch diesen Aufruf wird das Array $_list mit den Informationen zu den RRD-Dateien gefüllt, die den angegebenen Kriterien entsprechen.
+
+Je nach Anwendungsfall können mehrere Arrays erzeugt werden. Die folgenden [[http://www.nagios-portal.org/wbb/index.php?page=Thread&threadID=13605|Beispiele]] stammen aus dem deutschen Nagios-Forum.
+
+Im ersten Beispiel werden zwei Eingabedateien verwendet, aus denen insgesamt drei Graphen erstellt werden. Der erste Graph stellt die aggregierten Daten von zwei Interfaces dar, die anderen sind "normale" Graphen der beiden Interfaces, wie sie auch mit den üblichen Mitteln dargestellt werden können.\\ 
+===== Beispiel 1 =====
+<code><?php
+
+$_port_1 = tpl_getdata("localhost","if_port_27","");
+$_port_2 = tpl_getdata("localhost","if_port_44","");
+
+# $debug->doCheck('print_r',$_port_1);
+
+$ds_name[1] = "Traffic Trunk Port";
+$opt[1] = "--slope-mode --vertical-label \"Traffic\" -b 1000 --title=\" Aggregated Trunk \" ";
+$def[1] = "";
+
+$def[1] .= "DEF:in_1=".$_port_1[1]['RRDFILE'].":1:AVERAGE ";
+$def[1] .= "DEF:in_2=".$_port_1[1]['RRDFILE'].":1:AVERAGE ";
+$def[1] .= "CDEF:in=in_1,in_2,+ ";
+
+$def[1] .= "DEF:out_1=".$_port_2[1]['RRDFILE'].":2:AVERAGE ";
+$def[1] .= "DEF:out_2=".$_port_2[1]['RRDFILE'].":2:AVERAGE ";
+$def[1] .= "CDEF:out=out_1,out_2,+ ";
+
+$def[1] .= "LINE1:in#003300:\"in  \" " ;
+$def[1] .= "GPRINT:in:AVERAGE:\"%7.2lf %Sb/s everage\\n\" " ;
+
+$def[1] .= "LINE1:out#00ff00:\"out \" " ;
+$def[1] .= "GPRINT:out:AVERAGE:\"%7.2lf %Sb/s average\\n\" " ;
+
+$ds_name[2] = "Traffic Port 27";
+$opt[2] .= " --vertical-label \"Traffic\" -b 1000 --title \"Interface Traffic\" ";
+$def[2] .= "DEF:var1=".$_port_1[1]['RRDFILE'].":1:AVERAGE " ;
+$def[2] .= "DEF:var2=".$_port_1[1]['RRDFILE'].":2:AVERAGE " ;
+$def[2] .= "LINE1:var1#003300:\"in  \" " ;
+$def[2] .= "GPRINT:var1:LAST:\"%7.2lf %Sb/s last\" " ;
+$def[2] .= "GPRINT:var1:AVERAGE:\"%7.2lf %Sb/s avg\" " ;
+$def[2] .= "GPRINT:var1:MAX:\"%7.2lf %Sb/s max\\n\" " ;
+$def[2] .= "LINE1:var2#00ff00:\"out \" " ;
+$def[2] .= "GPRINT:var2:LAST:\"%7.2lf %Sb/s last\" " ;
+$def[2] .= "GPRINT:var2:AVERAGE:\"%7.2lf %Sb/s avg\" " ;
+$def[2] .= "GPRINT:var2:MAX:\"%7.2lf %Sb/s max\\n\" ";
+
+$ds_name[3] = "Traffic Port 44";
+$opt[3] .= " --vertical-label \"Traffic\" -b 1000 --title \"Interface Traffic\" ";
+$def[3] .= "DEF:var1=".$_port_2[1]['RRDFILE'].":1:AVERAGE " ;
+$def[3] .= "DEF:var2=".$_port_2[1]['RRDFILE'].":2:AVERAGE " ;
+$def[3] .= "LINE1:var1#003300:\"in  \" " ;
+$def[3] .= "GPRINT:var1:LAST:\"%7.2lf %Sb/s last\" " ;
+$def[3] .= "GPRINT:var1:AVERAGE:\"%7.2lf %Sb/s avg\" " ;
+$def[3] .= "GPRINT:var1:MAX:\"%7.2lf %Sb/s max\\n\" " ;
+$def[3] .= "LINE1:var2#00ff00:\"out \" " ;
+$def[3] .= "GPRINT:var2:LAST:\"%7.2lf %Sb/s last\" " ;
+$def[3] .= "GPRINT:var2:AVERAGE:\"%7.2lf %Sb/s avg\" " ;
+$def[3] .= "GPRINT:var2:MAX:\"%7.2lf %Sb/s max\\n\" ";
+
+# $debug->doCheck('var_dump',$def);
+?></code>
+\\ 
+Das zweite (abgewandelte) Beispiel zeigt, wie man die CPU-Auslastung von mehreren Servern in einem Graphen darstellt:
+
+===== Beispiel 2 =====
+<code><?php
+# create array using regular expressions
+# define <hostname>,<service description>,<check_command>
+$_list = tpl_getdata( "esx" ,"CPU","");
+
+# activate the following line to check the contents of the array
+# $debug->doCheck('print_r',$_list);
+
+# initialize $opt and $def
+$opt[1] = "--title=\"CPU usage\" ";
+$def[1] = "";
+
+# set some colours
+$_colours = array("#80ff80","#00ffff","#008080","#0000ff","#ff8000","#ff0000","#800000","#000000");
+# define the datasource to be used
+$_ds = 1;
+
+# loop
+foreach($_list as $key=>$value){
+   $def[1] .= "DEF:var$key=" . $_list[$key]['RRDFILE'] . ":" . $_ds . ":AVERAGE ";
+   $def[1] .= "LINE1:var" . $key . $_colours[$key%8] . ":\"" . sprintf("%-20s",$_list[$key]['HOSTNAME']) . "\" ";
+   $def[1] .= "GPRINT:var" . $key . ":LAST:\"%10.2lf %S last\" "  ;
+   $def[1] .= "GPRINT:var" . $key . ":AVERAGE:\"%10.2lf %S avg\" " ;
+   $def[1] .= "GPRINT:var" . $key . ":MAX:\"%10.2lf %S max\\n\" " ;
+}
+?></code>
+
+Bei mehr als acht Linien werden wieder die gleichen Farben benutzt, allerdings sind aus meiner Sicht bereits acht Datenreihen unübersichtlich.

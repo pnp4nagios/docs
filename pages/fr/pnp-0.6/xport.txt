@@ -1,0 +1,11 @@
+====== Export des données ======
+
+PNP vous permet d'accéder aux données des bases RRD en utilisant le module ''xport''. Le format d'export peut-être spécifié. Actuellement, il est possible d'exporter au format ''xml'', ''json'' et ''csv''.
+
+Le module peut-être appelé en utilisant l'URL suivante :
+
+  /pnp4nagios/xport/<format>?host=<hostname>&srv=<servicedesc>
+
+Où <format> doit être remplacé par le format souhaité.
+
+[[start|Retour à l'index]] | [[tpl|modèle]]

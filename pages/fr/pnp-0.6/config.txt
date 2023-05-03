@@ -1,0 +1,207 @@
+====== Configuration ======
+
+La configuration des différences [[modes|modes des traitements des données de performance]] va être expliquée ci-dessous.
+
+===== Mode Synchronisé =====
+
+{{ :synchronous.png?150|}} Le mode synchronisé est le plus simple pour intégrer le collecteur de données ''process_perfdata.pl'' dans nagios. Tous les évènements vont déclencher l'exécution de ''process-service-perfdata''.
+
+Dans un premier temps, vous devez activer la collecte des données de performance (''process_performance_data'') dans le fichier ''nagios.cfg''. Notez que cette directive est sûrement déjà présente et configurer par défaut à "0".
+
+   process_performance_data=1
+
+La collecte des données de performance doit être désactivée dans la définition de chaque Host ou service pour lequel vous NE SOUHAITEZ PAS collecter ces données.
+
+<code>
+define service {
+   ...
+   process_perf_data 0
+   ...
+}
+</code>
+
+Depuis Nagios 3.x il est possible de désactiver l'export des variables d'environnement (Pour optimiser au maximum les performances du système). Malheureusement cette directive doit être activée pour permettre l'utilisation du mode synchronisé. Soit vous utilisez la valeur par défaut (ce qui veut dire que l'export est activé) ou vous pouvez définir la directive dans ''nagios.cfg''
+
+<code>enable_environment_macros=1</code>
+
+En plus de cela, la commande pour traiter les données de performance doit être spécifiée dans''nagios.cfg''
+
+<code>service_perfdata_command=process-service-perfdata</code>
+
+Depuis la version 3.0 de Nagios, il peut être utile d'activer également l'analyse des performances pour les Hosts. Due au changement de logique pour la vérification des Hosts, Nagios 3 effectue désormais des contrôles réguliers.
+
+<code>host_perfdata_command=process-host-perfdata</code>
+
+La nouvelle commande doit également être référencée dans la configuration de Nagios. Si vous avez utilisé le [[http://nagios.sourceforge.net/docs/3_0/quickstart.html|guide d'installation rapide]] pour installer Nagios, alors vous pouvez modifier la définition dans le fichier commands.cfg.
+La commande process_perfdata.pl n'a pas besoin d'argument à part l'option -d ( DATATYPE ) si vous voulez analyser les performances résultant de la vérification des hosts.
+
+<code>
+define command {
+       command_name    process-service-perfdata
+       command_line    /usr/bin/perl /usr/local/pnp4nagios/libexec/process_perfdata.pl
+}
+
+define command {
+       command_name    process-host-perfdata
+       command_line    /usr/bin/perl /usr/local/pnp4nagios/libexec/process_perfdata.pl -d HOSTPERFDATA
+}
+</code>
+
+**Note**: ''process_perfdata.pl'' ne peut pas tourner sous ePN ( embedded Perl Nagios ). Dans ce cas le script doit être appelé en utilisant ''/usr/bin/perl'' ( ou le chemin où est installé l'exécutable perl). Si vous utilisez Nagios 3.x ou n'utilisez pas ePN, il n'y a pas besoin de spécifier ''/usr/bin/perl''. 
+
+===== Mode Bulk =====
+
+{{ :bulk.png?150|}}Bulk mode est un mode un peu plus compliqué que le mode synchronisé mais reduit clairement la charge sur le serveur Nagios car le collecteur de données ''process_perfdata.pl'' n'est pas appelé à chaque vérification de service/host.
+
+In bulk mode, Nagios écrit les données dans un fichier temporaire dans un format bien défini. Ce fichier est traité par ''process_perfdata.pl'' à intervalle régulier. Nagios prend en charge le démarrage et le lancement périodique.
+
+Le traitement des performances doit être activé dans ''nagios.cfg''
+
+   process_performance_data=1
+
+de plus que quelque directives doivent être ajoutées:
+
+<code>
+#
+# service performance data
+#
+service_perfdata_file=/usr/local/pnp4nagios/var/service-perfdata
+service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$
+service_perfdata_file_mode=a
+service_perfdata_file_processing_interval=15
+service_perfdata_file_processing_command=process-service-perfdata-file
+
+#
+# host performance data starting with Nagios 3.0
+# 
+host_perfdata_file=/usr/local/pnp4nagios/var/host-perfdata
+host_perfdata_file_template=DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$
+host_perfdata_file_mode=a
+host_perfdata_file_processing_interval=15
+host_perfdata_file_processing_command=process-host-perfdata-file
+</code>
+**Attention:** Ces définitions d'exemples diffèrent de celles présentes dans ''nagios.cfg''!
+
+Les directives et leurs significations:
+
+  * ''**service_perfdata_file**'' chemin du fichier temporaire qui vas contenir les données de performance.
+  * ''**service_perfdata_file_template**'' format du fichier temporaire. Les données vont être définies en utilisant les macros Nagios.
+  * ''**service_perfdata_file_mode**'' l'option "a" spécifie que les données doivent être ajoutées au fichier.
+  * ''**service_perfdata_file_processing_interval**'' intervalle de 15 secondes
+  * ''**service_perfdata_file_processing_command**'' la commande à appeler à chaque intervalle.
+
+La commande utilisée doit être annoncée à Nagios. Si vous avez utilisé le [[http://nagios.sourceforge.net/docs/3_0/quickstart.html|"quickstart installation guides"]] pour Nagios vous pouvez modifier les définitions se trouvant dans commands.cfg.
+
+<code>
+define command{
+       command_name    process-service-perfdata-file
+       command_line    /usr/local/pnp4nagios/libexec/process_perfdata.pl --bulk=/usr/local/pnp4nagios/var/service-perfdata
+}
+
+define command{
+       command_name    process-host-perfdata-file
+       command_line    /usr/local/pnp4nagios/libexec/process_perfdata.pl --bulk=/usr/local/pnp4nagios/var/host-perfdata
+}
+</code>
+
+<box 90%|**NOTE:**> 
+Parce qu'il y a plus de données à analyser qu'en mode synchronisé, ''process_perfdata.pl'' va mettre plus de temps à analyser ces données, donc vous devez vérifier la valeur du TIMEOUT dans ''etc/process_perfdata.cfg'' et l'ajuster comme il se doit.</box>
+
+===== Mode Bulk avec NPCD =====
+
+{{ :bulk-npcd.png?150|}} La configuration est identique au mode Bulk à l'exception de la commande utilisée.
+Le traitement des performances doit être activé dans ''nagios.cfg''
+
+   process_performance_data=1
+
+de plus que quelque directives doivent être ajoutées:
+
+<code>
+#
+# service performance data
+#
+service_perfdata_file=/usr/local/pnp4nagios/var/service-perfdata
+service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$
+service_perfdata_file_mode=a
+service_perfdata_file_processing_interval=15
+service_perfdata_file_processing_command=process-service-perfdata-file
+
+#
+# host performance data starting with Nagios 3.0
+# 
+host_perfdata_file=/usr/local/pnp4nagios/var/host-perfdata
+host_perfdata_file_template=DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$
+host_perfdata_file_mode=a
+host_perfdata_file_processing_interval=15
+host_perfdata_file_processing_command=process-host-perfdata-file
+</code>
+**Attention:** Ces définitions d'exemples diffèrent de celles présentes dans ''nagios.cfg''!
+
+Les directives et leurs significations:
+
+  * ''**service_perfdata_file**'' chemin du fichier temporaire qui va contenir les données de performance.
+  * ''**service_perfdata_file_template**'' [[perfdata_file_template|format]] du fichier temporaire. Les données vont être définies en utilisant les macros Nagios.
+  * ''**service_perfdata_file_mode**'' l'option "a" spécifie que les données doivent être ajoutées au fichier.
+  * ''**service_perfdata_file_processing_interval**'' intervalle de 15 secondes
+  * ''**service_perfdata_file_processing_command**'' la commande à appeler à chaque intervalle.
+
+La commande utilisée doit être annoncée à Nagios. Si vous avez utilisé le [[http://nagios.sourceforge.net/docs/3_0/quickstart.html|"quickstart installation guides"]] pour Nagios vous pouvez modifier les définitions se trouvant dans ''commands.cfg''.
+
+<code>
+define command{
+       command_name    process-service-perfdata-file
+       command_line    /bin/mv /usr/local/pnp4nagios/var/service-perfdata /usr/local/pnp4nagios/var/spool/service-perfdata.$TIMET$
+}
+
+define command{
+       command_name    process-host-perfdata-file
+       command_line    /bin/mv /usr/local/pnp4nagios/var/host-perfdata /usr/local/pnp4nagios/var/spool/host-perfdata.$TIMET$
+}
+</code>
+
+En utilisant ces commandes, le fichier service-perfdata va etre déplacé dans var/spool/ après que le temps spécifié dans ''**service_perfdata_file_processing_interval**'' soit écoulé. La variable Nagios  $TIMET$ est ajoutée à la fin du nom du fichier pour éviter l'écrasement des anciens fichiers éventuellement existants. La variable $TIMET$ contient l'heure et la date actuelle au format time_t (Nombre de secondes depuis le 1 Janvier 1970 "UNIX date format").
+
+Les fichiers se trouvant dans le dossier /usr/local/pnp4nagios/var/spool/ sont récoltés par le processus NPCD.
+
+NPCD surveille le dossier et passe les noms de fichiers au script ''process_perfdata.pl''. De cette façon, la collecte des données de performance est complètement indépendante de Nagios. 
+
+Before starting NPCD you have to check the paths to the spool directory and to ''process_perfdata.pl'' specified in the config file ''npcd.cfg''.
+The only thing that remains is to start NPCD.
+
+   /usr/local/pnp4nagios/bin/npcd -d -f /usr/local/pnp4nagios/etc/npcd.cfg
+
+The option ''-d'' starts NPCD as a daemon in the background.
+
+===== Bulk Mode with NPCD and npcdmod =====
+
+{{ :bulk-npcdmod.png?150|}} This mode uses the event broker module npcdmod.o. The flow of data is identical to "bulk mode with NPCD". The internal perfdata routines of Nagios activated by the "*_perf_data_*" directives in nagios.cfg are *NOT* used anymore. The module npcdmod.o takes over the task of processing the data required by PNP.
+
+Pro:
+  * The perfdata routines can now be used for other addons.
+  * The configuration is easier.
+  * It is the preferred mode of the PNP developers.
+
+Adjustments in nagios.cfg:
+
+<code>
+process_performance_data=1
+broker_module=/usr/local/pnp4nagios/lib/npcdmod.o config_file=/usr/local/pnp4nagios/etc/npcd.cfg
+</code>
+
+All other directives mentioned on this page must **NOT** be used.
+ 
+**Attention:** If you have changed the value of ''event_broker_options'' from -1 to another value then please note that PNP needs the bits 2 and 3 set (0b01100). Make sure that the resultung value has these bits set because otherwise there will be no performance data to process.
+ 
+After restarting Nagios information regarding the start of the module will be logged.
+
+Excerpt from nagios.log
+<code>
+[1277545053] npcdmod: Copyright (c) 2008-2009 Hendrik Baecker (andurin@process-zero.de) - http://www.pnp4nagios.org
+[1277545053] npcdmod: /usr/local/pnp4nagios/etc/npcd.cfg initialized
+[1277545053] npcdmod: spool_dir = '/usr/local/pnp4nagios/var/spool/'.
+[1277545053] npcdmod: perfdata file '/usr/local/pnp4nagios/var/perfdata.dump'.
+[1277545053] npcdmod: Ready to run to have some fun!
+[1277545053] Event broker module '/usr/local/pnp4nagios/lib/npcdmod.o' initialized successfully.
+</code>
+
+[[start|back to contents]] | [[verify|checking the functionality]]

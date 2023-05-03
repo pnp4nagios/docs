@@ -1,0 +1,42 @@
+====== RRD_STORAGE_TYPE = MULTIPLE ======
+
+**available starting with PNP 0.6.3**
+
+Since PNP version 0.6 it is possible to store performance data into multiple RRD databases instead of a single RRD database.
+
+After creation of an RRD file you cannot alter the number of data sources. This may lead to problems if Nagios plugins change the number of data sources dynamically.
+
+An example might be ''check_disk'' if you monitor all available file systems using one service. If a file system is added the RRD database cannot be updated anymore because the internal would be changed.
+
+Per default PNP uses the option ''RRD_STORAGE_TYPE = SINGLE'' which is defined in ''process_perfdata.pl'' and might be changed using the config file ''process_perfdata.cfg''.
+This setting should **not** be changed globally because PNP will start creating new RRD files immediately after changing to MULTIPLE. Old data will get lost!
+
+Additionally it is not advisable to activate ''RRD_STORAGE_TYPE = MULTIPLE'' globally in regard to performance. The number of RRD databases and the disk I/O will increase significantly. That means that you should carefully select which Nagios check commands should be altered. 
+
+The section [[tpl_custom|Custom Templates]] contains information about how the settings should be altered.    
+
+===== A converter =====
+
+The script ''libexec/rrd_convert.pl'' will be used to switch ''RRD_STORAGE_TYPE'' to ''MULTIPLE'' and to migrate the RRD databases.
+
+Significant as always with PNP is the Nagios check command.
+
+<code>rrd_convert.pl --check_command=<nagios_check_command> | --list_commands [ --dry-run ] [ --tmp_dir=<temp-directory ]
+[ --no_structure_check ]</code>
+
+You have to specify at least one of "--check_command" or "--list_commands", respectively.
+Using the open ''--check-command='' you tell the script which check command should be searched for.
+
+''rrd_convert.pl'' will now browse all PNP XML files for this command and output some statistics. 
+
+After confirmation from the user the conversion of the appropriate RRD databases will start displaying the progress. Pressing <ENTER> as an answer will terminate the script so please enter a letter.
+
+If you are unsure then use ''--list_commands'' to get a list of the check commands used in the XML files.
+
+The option ''--dry-run'' will convert the RRD databases but they will be stored in /tmp/rrd_convert in separate folders per host instead. This way you'll get a feeling about the runtime and the amount of data.
+
+If you want to change the temporary directory you can use ''--tmp_dir=<alternative temp dir>''.
+
+Sometimes the number of datasources in the RRD files doesn't match the number in the XML files. This might happen if a plugin suddenly returns more datasources than usual (like check_disk as mentioned above). Using the option ''--no_structure_check'' these RRD files will be converted as well.
+ 
+[[start|back to contents]] | [[npcd|NPCD details]]

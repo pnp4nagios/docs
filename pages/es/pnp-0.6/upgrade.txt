@@ -1,0 +1,115 @@
+====== Actualizar a la versión 0.6.x  ======
+
+Se ha reescrito completamente el frontal web, que ahora está basado en el framework PHP MVC [[http://www.kohanaphp.com|Kohana]]. Por esto debemos comprobar las dependencias que han cambiado, antes de la instalación.
+
+Si no se especifica ninguna opción en ''./configure'' PNP 0.4.x se instalará en una instalación de Nagios existente en ''/usr/local/nagios''.
+
+Si no se especifica ninguna opción en ''./configure'' PNP 0.6.x se instalará en un directorio independiente, en''/usr/local/pnp4nagios'', por lo que debería verse como una aplicación independiente.
+
+===== Comparación de la estructura=====
+
+Resumen de una instalación PNP 0.4.14
+ 
+<code>
+./configure
+...
+*** Configuration summary for pnp 0.4.14 05-02-2009 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/nagios
+  HTML Dir:                         /usr/local/nagios/share/pnp
+  Config Dir:                       /usr/local/nagios/etc/pnp
+  Location of rrdtool binary:       /usr/bin/rrdtool Version 1.3.1
+  RRDs Perl Modules:                FOUND (Version 1.3001)
+  RRD Files stored in:              /usr/local/nagios/share/perfdata
+  process_perfdata.pl Logfile:      /usr/local/nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/nagios/var/spool/perfdata/
+</code>
+
+Resumen de una instalación PNP 0.6.0
+
+<code>
+./configure
+...
+*** Configuration summary for pnp4nagios-0.6.0 07-30-2009 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/pnp4nagios
+  HTML Dir:                         /usr/local/pnp4nagios/share
+  Config Dir:                       /usr/local/pnp4nagios/etc
+  Location of rrdtool binary:       /usr/bin/rrdtool Version 1.3.1
+  RRDs Perl Modules:                FOUND (Version 1.3001)
+  RRD Files stored in:              /usr/local/pnp4nagios/var/perfdata
+  process_perfdata.pl Logfile:      /usr/local/pnp4nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/pnp4nagios/var/spool
+
+  Web Interface Options:  -------------------------         -------------------
+  HTML URL:                         http://localhost/pnp4nagios/
+  Apache Config File:               /etc/apache2/conf.d/pnp4nagios.conf
+</code>
+
+Comparando estas líneas podemos ver los parámetos que cambian y adoptar una estragegia de actualización.
+
+===== Ajustes =====
+
+Las plantillas de de definición de action_url han cambiado. En lugar de "/nagios/pnp" la URL debería ser "/pnp4nagios" y en lugar de "index.php" ahora se usa "graph".<code>define host {
+  name       host-pnp
+  register   0
+  action_url /pnp4nagios/graph?host=$HOSTNAME$
+}
+
+define service {
+  name       srv-pnp
+  register   0
+  action_url /pnp4nagios/graph?host=$HOSTNAME$&srv=$SERVICEDESC$
+}</code>
+
+Las definiciones para las funciones de popup de las previsualizaciones son similares
+<code>define host {
+   name       host-pnp
+   action_url /pnp4nagios/graph?host=$HOSTNAME$' class='tips' rel='/pnp4nagios/popup?host=$HOSTNAME$
+   register   0
+}
+
+define service {
+   name       srv-pnp
+   action_url /pnp4nagios/graph?host=$HOSTNAME$&srv=$SERVICEDESC$' class='tips' rel='/pnp4nagios/popup?host=$HOSTNAME$&srv=$SERVICEDESC$
+   register   0
+}</code>
+**Atención**: //No// es un error que las cadenas que preceden y van depués de "class" contengan una sóla comilla.
+
+Estas plantillas pueden ser usadas con Nagios 2.x y 3.x.
+
+Las variables contenidas en los ficheros de la carpeta de plantillas deben inicializarse antes de ser usadas. Ejemplo<code>$lower = ""</code>
+\\ 
+Las constantes usadas en ficheros de plantillas ya no funcionan, por lo que deberán ser convertidas en variables. 
+  define("_WARNRULE", '#FFFF00');
+debe ser cambiado a
+   $WARNRULE = '#FFFF00';
+Por favor tenga en cuenta que todas deben ser cambiadas ;-).
+
+===== Escenario de Actualización usando NPCD=====
+
+  - planificar la nueva instalación
+  - ejecutar test de instalación con el nuevo sistema
+  - realizar una copia de seguridad de la anterior instalación
+  - instalar PNP 0.6.x en ''/usr/local/pnp4nagios''
+  - make install-config
+  - make install-webconf
+  - reiniciar Apache
+  - comprobar Apache-config 
+    - entrando en ''/pnp4nagios'' debería reportar un directorio perfdata vacío
+  - crear ''/usr/local/pnp4nagios/etc/npcd.cfg'' desde ''npcd.cfg-sample''
+    - comprobar las rutas y realizar las adaptaciones de los cambios desde 0.4.x si es necesario
+  - ajustar las rutas en nagios.cfg a la nueva instalación de PNP 
+  - ajustar las rutas en las deficiones de comandos
+  - parar npcd usando ''/etc/init.d/npcd stop''
+  - ''make install-init'' instalar el nuevo init script para npcd
+  - ''/etc/init.d/nagios stop''
+  - copie ''/usr/local/nagios/share/perfdata'' a ''/usr/local/pnp4nagios/var/perfdata''. Atención: compruebe los permisos
+  - ''/etc/init.d/npcd start''
+  - ''/etc/init.d/nagios start''

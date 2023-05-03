@@ -1,0 +1,33 @@
+~~NOCACHE~~
+
+====== FAQ ======
+
+====== Instalador ======
+
+{{page>es:faq:i1}}
+{{page>es:faq:i2}}
+{{page>es:faq:i3}}
+{{page>es:faq:i4}}
+{{page>es:faq:i5}}
+{{page>es:faq:i6}}
+
+====== Errores en tiempo de ejecución ======
+
+{{page>es:faq:1}}
+{{page>es:faq:2}}
+{{page>es:faq:3}}
+{{page>es:faq:4}}
+{{page>es:faq:5}}
+{{page>es:faq:6}}
+{{page>es:faq:7}}
+{{page>es:faq:8}}
+{{page>es:faq:9}}
+{{page>es:faq:10}}
+{{page>es:faq:11}}
+{{page>es:faq:12}}
+{{page>es:faq:13}}
+{{page>es:faq:14}}
+{{page>es:faq:15}}
+{{page>es:faq:16}}
+{{page>es:faq:17}}
+{{page>es:faq:18}}

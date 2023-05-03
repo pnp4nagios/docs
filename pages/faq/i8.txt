@@ -1,0 +1,3 @@
+===== RRDtool Binary is not executable by PHP =====
+
+If you got the error "//RRDtool Binary /usr/local/rrdtool-1.4.3/bin/rrdtool is not executable by PHP//" on the first run of the PNP4Nagios webinterface or you see errors instead of graphs, deactivate "//safe_mode//" (//safe_mode = off//) in your //php.ini// and //restart Apache2//

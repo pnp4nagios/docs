@@ -1,0 +1,66 @@
+====== Plantillas personalizadas ======
+
+Como ya se ha descrito en "[[tpl|¿Qué son las plantillas?]]" la apariencia de los gráficos depende del comando de chequeo que se haya usado.
+
+Hay situaciones en las que este comportamiento debe ser sobreescrito. Esto se hace cuando se definen comandos universales.
+===== CUSTOM_TEMPLATE =====
+
+Ejemplo:
+<code>
+define command {
+  command_name check_nrpe
+  command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$ -a "$ARG2$"
+}
+</code>
+
+Esto haría que se inovocase la plantilla de check_nrpe.php incluso cuando el equipo monitorizado use un plugin completamente diferente que es llamado desde NRPE.
+
+PNP, especialmente process_perfdata.pl, buscará un fichero de configuración (<check_command>.cfg) en el directorio etc/check_commands y lee sus contenidos (si están disponibles).
+
+Como en nuestro ejemplo el comando se llama desde check_nrpe, se buscará etc/check_commands/check_nrpe.cfg.
+
+En la instalación un fichero ejemplo de configuración con la extensión .cfg-sample se copia a etc/check_commands.
+
+Dos opciones pueden establecerse en este fichero de configuración:
+
+<code>
+# check_command check_nrpe!load!-w 4,4,4 -c 5,5,5
+# ________0__________|       |       |
+# ________1__________________|       |
+# ________2__________________________|
+#
+CUSTOM_TEMPLATE = 1
+</code>
+
+''CUSTOM_TEMPLATE = 1'' asegura que sólo el contenido de $ARG1$ se usará como nombre de plantilla. Como $ARG1$ contiene "load" en este ejemplo el nombre de plantilla será "load.php".
+
+''CUSTOM_TEMPLATE = 0,1'' se convierte en -> "check_nrpe_load.php" 
+
+''CUSTOM_TEMPLATE = 1,0'' se convierte en -> "load_check_nrpe.php"
+
+===== DATATYPE =====
+
+La opción "DATATYPE" controla el tipo de dato que se usa en la creación de la base de datos RRD. El valor por defecto es "GAUGE". Para valores consecutivos, el tipo debería ser "COUNTER". Los desarrolladores de Plugins deberían usar la unidad "c" para contadores, pero este no es siempre el caso.
+
+Establecer todos los tipos de datos a COUNTER
+<code>DATATYPE = COUNTER</code>
+
+Establecer fuentes de datos a diferentes tipos
+<code>DATATYPE = GAUGE,GAUGE,COUNTER,COUNTER</code>
+
+Esta opción sólo tiene efecto durante la creación de la base de datos RRD.
+
+Más tipos de datos son detallados en la documentación de RRDTool consultable en [[http://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html|rrdcreate]].
+===== MIN and MAX =====
+
+En unas pocas situaciones, puede ser necesario limitar los valores que son válidos para RRDTool.
+
+Las bases de datos RRD pueden ser creadas con valores mínimos y máximos preestablecidos de forma fija. Más detalles en http://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html.
+
+Cuenta para el valor máximo tomado de los datos de rendimiento
+<code>USE_MAX_ON_CREATE = 1</code>
+
+Cuenta para el valor mínimo tomado de los datos de rendimiento
+<code>USE_MIN_ON_CREATE = 1</code>
+
+[[start|volver a contenidos]] | [[advanced|PNP en entornos distribuidos]]

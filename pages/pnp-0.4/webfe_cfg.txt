@@ -1,0 +1,89 @@
+====== PNP Web Frontend ======
+
+The behaviour of the PNP Web-Frontend can be controlled through the config file ''etc/pnp/config.php''. This file will be overwritten during updates of PNP as the paths and options are detected during ''./configure''.
+
+Own adjustments should be made in ''etc/php/config_local.php''. If this file does not exist the file config.php can be taken as a guideline.
+
+
+
+
+===== etc/pnp/config.php =====
+
+Following the most important parameters:
+
+   $conf['rrdtool'] = "/usr/bin/rrdtool";
+
+The path to the RRDtool binary. Will be detected by ''./configure''.
+
+   $conf['graph_width'] = "500";
+   $conf['graph_height'] = "100";
+
+Height and width of the RRD graphs.
+
+   $conf['graph_opt'] = "";
+
+Additional options passed with every call of RRDTool, for example ''----slope-mode'' to smooth the graphs.
+
+   $conf['rrdbase'] = "/usr/local/nagios/share/perfdata/";
+
+The path to the RRD and XML files created by ''process_perfdata.pl''.
+
+   $conf['page_dir'] = "/usr/local/nagios/etc/pnp/pages/";
+
+The path to the config file for the [[pages]].
+
+----
+
+PNP pages will be refreshed every n seconds.
+
+   $conf['refresh'] = "90";
+
+----
+
+Max. age of RRD files in seconds. After reaching this value links to the graphs will be marked as inactive.
+
+   $conf['max_age'] = 60*60*6;
+
+----
+
+
+Base URL to the Nagios CGIs.
+
+   $conf['nagios_base'] = "/nagios/cgi-bin";
+
+----
+List of users who are allowed to view links to the services of the current host.
+
+   $conf['allowed_for_service_links'] = "EVERYONE";
+
+----
+
+List of users who can view/access the host search field.
+
+   $conf['allowed_for_host_search'] = "EVERYONE";
+
+----
+
+If PNP is called with a host only ( index.php?host=<myserver> ), the defined user is shown an overview of all services related to this host.
+
+   $conf['allowed_for_host_overview'] = "EVERYONE";
+
+----
+
+The periods of time the RRD graphs will show are determined using the array $views[]. The title and number of graphs can be specified globally in this place.
+
+<code>$views[0]["title"] = "4 Hours";
+$views[0]["start"] = ( 60*60*4 );
+
+$views[1]["title"] = "24 Hours";
+$views[1]["start"] = ( 60*60*24 );
+
+$views[2]["title"] = "One Week";
+$views[2]["start"] = ( 60*60*24*7 );
+
+$views[3]["title"] = "One Month";
+$views[3]["start"] = ( 60*60*24*30 );
+
+$views[4]["title"] = "One Year";
+$views[4]["start"] = ( 60*60*24*365 );
+</code>

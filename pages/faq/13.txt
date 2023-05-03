@@ -1,0 +1,5 @@
+===== template-without-def =====
+
+The template used for this host/service does not return the array $def[] to PNP.
+
+The path to the template is shown in the error message.

@@ -1,0 +1,32 @@
+====== Timeranges ======
+
+In the overview PNP shows five timeranges which can be defined in config.php.
+
+Additionally you can influence the timeranges via the URL. This can be useful to automatically create PDF documents. The ranges can be defined using the options "start" and "end".
+
+Example:
+
+   pnp4nagios/graph?host=<hostname>&srv=<servicedesc>&start=-1week
+
+The graph will start one week prior to the current date and time. It will end at the current timestamp.
+
+^ start ^ end ^ view ^ result ^
+|       |     |      |all views ending at current timestamp |
+|  x    |     |      |all views starting at defined date |
+|       |  x  |      |all views ending at defined date |
+|  x    |  x  |      |one view between the two dates |
+|       |     |  x   |one view ending at current timestamp |
+|  x    |     |  x   |one view starting at defined date |
+|       |  x  |  x   |one view ending at defined date |
+
+
+Examples of different specifications
+
+^  format   ^ description ^ 
+| 2009W04   | 4. week of 2009 |
+| 1.5.2009  | May, 1st 2009 |
+| -1 day    | one day back |
+| -3 weeks  | 3 weeks back |
+| -1 year   | one year back  |
+| yesterday | yesterday |\\
+[[start|back to contents]] | [[pages]]

@@ -1,0 +1,14 @@
+====== host-perfdata-dir-empty ======
+
+PNP was called using a host in the URL.
+
+Example:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+The resulting path to the perfdata directory could be found but it was not possible to retrieve data.
+
+The path is shown in the error message.
+
+The cause for this error cannot be determined without further ado.
+
+Normally PNP will not create a directory without placing data. Maybe the directory was created manually with wrong permissions so PNP has no write permissions.

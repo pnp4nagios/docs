@@ -1,0 +1,109 @@
+======verify_pnp_config======
+
+Bei Problemen kann das Perl-Script ''verify_pnp_config'' von http://verify.pnp4nagios.org helfen die aktuelle Nagios Konfiguration zu prüfen und entsprechend Hinweise zur Lösung liefern.
+
+Bei [[about#support|Support Anfragen]] sollte immer die Ausgabe dieses Scripts mit angegeben werden, da die Entwickler sich so einen besseren Überblick über das verwendete System machen können.
+
+*** ACHTUNG ***: Das Skript unterstützt NUR Nagios 3.x und Icinga 1.x als Monitoring-System.
+
+Feedback, Verbesserungsvorschläge oder Patches bitte per Mail an support@pnp4nagios.org
+
+===== Download ======
+
+Das Verify Script ist unter http://verify.pnp4nagios.org verfügbar.
+
+<code>
+wget http://verify.pnp4nagios.org/verify_pnp_config
+</code>
+
+===== Test ======
+
+Das Verify Script benötigt drei Optionen um die Funktion von PNP4Nagios zu prüfen
+
+<code>
+lenny:~# perl verify_pnp_config
+
+verify_pnp_config -m|--mode=[sync|bulk|bulk+npcd|npcdmod]
+                 -c|--config=[path to nagios.cfg]
+                 -p|--pnpcfg=[path to PNP config dir]
+</code>
+
+Die wichtigste Infos ist der zu prüfende Modus, welcher mit der Option ''--mode'' angegeben wird.\\
+Weitere Infos über die einzelnen Modi und deren Konfiguration unter [[modes|"Welcher Modus ist für mich richtig ?"]] und [[config|"Konfiguration"]]
+
+Weiterhin ist der Pfad zur Nagios Config Datei (nagios.cfg) über die Option ''--config'' zu übergeben. 
+
+Über ''--pnpcfg'' wird der Pfad zum ''etc'' Verzeichnis der PNP4Nagios Installation übergeben.\\
+
+Beim Aufruf von ''perl verify_pnp_config'' werden die verfügbaren Optionen ausgegeben.
+
+<code>
+lenny:~# perl verify_pnp_config --mode npcdmod --config=/usr/local/nagios/etc/nagios.cfg --pnpcfg=/usr/local/pnp4nagios/etc
+[INFO]  ========== Starting Environment Checks ============
+[INFO]  My version is: verify_pnp_config-0.6.14-R.31
+[INFO]  Reading /usr/local/nagios/etc/nagios.cfg
+[OK  ]  Running product is 'nagios'
+[OK  ]  object_cache_file is defined
+[OK  ]  object_cache_file=/usr/local/nagios/var/objects.cache
+[INFO]  Reading /usr/local/nagios/var/objects.cache
+[OK  ]  resource_file is defined
+[OK  ]  resource_file=/usr/local/nagios/etc/resource.cfg
+[INFO]  Reading /usr/local/nagios/etc/resource.cfg
+[INFO]  Reading /usr/local/pnp4nagios/etc/process_perfdata.cfg
+[INFO]  Reading /usr/local/pnp4nagios/etc/pnp4nagios_release
+[OK  ]  Found PNP4Nagios version "0.6.14"
+[OK  ]  Effective User is 'nagios'
+[OK  ]  User nagios exists with ID '1000'
+[OK  ]  Effective group is 'nagios'
+[OK  ]  Group nagios exists with ID '1000'
+[INFO]  ========== Checking npcdmod Mode Config  ============
+[OK  ]  process_performance_data is 1 compared with '/1/'
+[OK  ]  event_broker_options is defined
+[OK  ]  event_broker_options=-1
+[OK  ]  event_broker_option bits 2 and 3 enabled (12)
+[OK  ]  broker_module is defined
+[OK  ]  broker_module=/usr/local/pnp4nagios/lib/npcdmod.o config_file=/usr/local/pnp4nagios/etc/npcd.cfg
+[OK  ]  npcdmod.o config file is /usr/local/pnp4nagios/etc/npcd.cfg
+[OK  ]  /usr/local/pnp4nagios/etc/npcd.cfg used by npcdmod.o is readable
+[OK  ]  npcd daemon is running
+[OK  ]  /usr/local/pnp4nagios/etc/npcd.cfg is used by npcd and readable
+[OK  ]  npcd and npcdmod.o are using the same config file (/usr/local/pnp4nagios/etc/npcd.cfg)
+[INFO]  Nagios config looks good so far
+[INFO]  ========== Checking config values ============
+[INFO]  Reading /usr/local/pnp4nagios/etc/npcd.cfg
+[OK  ]  Script /usr/local/pnp4nagios/libexec/process_perfdata.pl is executable
+[INFO]  ========== Starting global checks ============
+[OK  ]  status_file is defined
+[OK  ]  status_file=/dev/shm/status.dat
+[INFO]  Reading /dev/shm/status.dat
+[INFO]  ==== Starting rrdtool checks ====
+[OK  ]  RRDTOOL is defined
+[OK  ]  RRDTOOL=/usr/bin/rrdtool
+[OK  ]  /usr/bin/rrdtool is executable
+[OK  ]  RRDtool 1.3.1  Copyright 1997-2008 by Tobias Oetiker <tobi@oetiker.ch>
+[OK  ]  USE_RRDs is defined
+[OK  ]  USE_RRDs=1
+[OK  ]  Perl RRDs modules are loadable
+[INFO]  ==== Starting directory checks ====
+[OK  ]  RRDPATH is defined
+[OK  ]  RRDPATH=/usr/local/pnp4nagios/var/perfdata
+[OK  ]  Perfdata directory '/usr/local/pnp4nagios/var/perfdata' exists
+[WARN]  62 hosts/services are not providing performance data
+[WARN]  'process_perf_data 1' is set for 43 hosts/services which are not providing performance data!
+[WARN]  'process_perf_data 0' is set for 27 of your hosts/services
+[OK  ]  'process_perf_data 1' is set for 243 of your hosts/services
+[INFO]  ==== System sizing ====
+[OK  ]  269 hosts/service objects defined
+[INFO]  ==== Check statistics ====
+[WARN]  Warning: 3, Critical: 0
+[WARN]  Checks finished...
+</code>
+
+===== Performance data =====
+Beginnend mit ''0.6.19-R.37'' (2013-02-17) akzeptiert das Skript die Option''--object'' (oder ''-o'') gefolgt von einer Zeichenkette, die einen Host und/oder einen Service angibt. Für diese/s Objekt(e) werden die Performance-Daten angegeben (falls vorhanden). Die Daten werden von eckigen Klammern begrenzt, gefolgt vom Wert der Direktive ''process_performance_data'' (''ppd''=n).
+
+''host'' = Performance-Informationen für den Host ''host'' zeigen\\
+'';service'' = Performance-Informationen für Service ''service'' zeigen\\
+''host;service'' = Performance-Informationen für Service ''service'' auf Host ''host'' zeigen
+
+Die Zeichenketten werden als reguläre Ausdrücke angesehen (Perl-Syntax).

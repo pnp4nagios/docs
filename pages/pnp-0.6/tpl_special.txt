@@ -1,0 +1,138 @@
+====== Special templates ======
+
+"special templates" (starting with PNP 0.6.5) are used to combine data from arbitrary hosts and services and thus are not connected directly to a host or service.
+
+Often it is desired to show data from several services in one graph. Every time the [[pages|"pages"]] will not be sufficient the special templates may come into play.
+
+===== Basics =====
+
+"Special templates" will be searched in ''pnp4nagios/share/templates.special'' and must have the extension ''.php''.
+
+They are called via the controller "special" using 
+
+  http://<your-nagios-server>/pnp4nagios/special?tpl=<template>
+
+''<template>'' is to be replaced with the particular template without the extension .php.
+
+An appropriate link will be shown in the PNP interface if at least one "special template" was found. 
+
+===== Example =====
+
+The task is to show the response times of all web servers with hostnames websrv, websrv02, and websrv03 in one graph. The data is provided by the service "HTTP".
+
+Step 1: create a template "websrv_response_times.php" in the folder ''pnp4nagios/share/templates.special''
+
+"Special templates" always start with the definition of a title and a comment.
+
+<code php>
+$this->MACRO['TITLE']   = "HTTP Response Times";
+$this->MACRO['COMMENT'] = "HTTP Response Times for all Cluster Nodes";
+</code>
+
+Step 2: create a list of all hosts/services which come into question. PNP provides a function ''tplGetServices()'' to accomplish this task. 
+
+tplGetServices() expects two parameters. 
+
+Parameter 1 is a regular expression for the host(s), parameter 2 a regular expression for the service(s).
+
+<code php>
+$services = $this->tplGetServices("websrv","HTTP");
+</code>
+
+$services now is an array with all services found.
+
+To ease template development and to give an insight on the data structures you can force Kohana to stop processing using an exception.
+
+To show the data of $services you just need the following line:
+
+<code php>
+throw new Kohana_exception(print_r($services,TRUE));
+</code>
+
+Output of pnp4nagios/special?tpl=websrv_response_times
+
+<code>
+Array ( 
+  [0] => Array ( 
+     [host] => websrv01 
+     [service] => HTTP 
+  ) 
+  [1] => Array ( 
+     [host] => websrv02
+     [service] => HTTP 
+  ) 
+  [2] => Array ( 
+     [host] => websrv03
+     [service] => HTTP 
+  ) 
+)
+</code>
+
+The variable $services contains an array with all services found, in this case three hosts with the service "HTTP".
+
+Step 3: Iterating the array $services and creating the graph definitions
+
+<code php>
+foreach($services as $key=>$val){
+    $data      = $this->tplGetData($val['host'],$val['service']);
+    $hostname  = rrd::cut($data['MACRO']['HOSTNAME'], 15);
+    $def[0]   .= rrd::def("var$key" , $data['DS'][0]['RRDFILE'], $data['DS'][0]['DS'] );
+    $def[0]   .= rrd::line1("var$key", rrd::color($key), $hostname);
+    $def[0]   .= rrd::gprint("var$key", array("MAX", "AVERAGE"));
+}
+</code>
+
+Inside the loop the function ''tplGetData'' is used to read the particular XML file. The data is returned as an array called $data.
+
+In this example some other little PNP helpers are used recognisable by the extension ''rrd::''.
+
+The function [[tpl_helper#rrdcut|rrd::cut()]] cuts a string to a specific length or fills up to this length. This might be helpful to align the legend.
+
+The function [[tpl_helper#rrdgprint|rrd::gprint()]] creates the legend below the graph.
+
+The function [[tpl_helper#rrdcolor|rrd::color()]] returns a colour from a predefined list of colours.
+
+You will find more information on the PNP helpers [[tpl_helper|here]].
+
+<code php>
+<?php
+#
+# Special Template websrv_response_times.php
+#
+$this->MACRO['TITLE']   = "HTTP Response Times";
+$this->MACRO['COMMENT'] = "HTTP Response Times for all Cluster Nodes";
+#
+# Get a List of Services by regex 
+# Option 1 = 'Host Regex'
+# Option 2 = 'Service Regex'
+#
+$services = $this->tplGetServices("websrv","HTTP");
+#throw new Kohana_exception(print_r($services,TRUE));
+#
+# The Datasource Name for Graph 0
+$ds_name[0] = "Response Times";
+$opt[0]     = "--title \"Response Times\"";
+$def[0]     = "";
+#
+# Iterate through the list of hosts
+foreach($services as $key=>$val){
+    #
+    # get the data for a given Host/Service
+    $data = $this->tplGetData($val['host'],$val['service']);
+    #
+    # Throw an exception to debug the content of $data
+    # Just to get Infos about the Array Structure
+    #
+    #throw new Kohana_exception(print_r($data,TRUE));
+    $hostname   = rrd::cut($data['MACRO']['HOSTNAME']);
+    $def[0]    .= rrd::def("var$key" , $data['DS'][0]['RRDFILE'], $data['DS'][0]['DS'] );
+    $def[0]    .= rrd::line1("var$key", rrd::color($key), $hostname);
+    $def[0]    .= rrd::gprint("var$key", array("MAX", "AVERAGE"));
+}
+?>
+
+</code>
+
+
+ 
+[[start|back to contents]]

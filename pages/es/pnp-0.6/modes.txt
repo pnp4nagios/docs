@@ -1,0 +1,59 @@
+====== El arte de recolectar datos ======
+
+PNP soporta varios modos para procesar los datos de rendimiento
+. Los modos difieren en la complejidad y el rendimiento que se espere.
+
+
+Nagios invoca un comando por cada equipo y cada servicio que tengan datos de rendimiento que deban ser procesados. Dependiendo del modo elegido, los datos son pasados a process_perfdata.pl o serán escritos en ficheros temporales y procesados más tarde. process_perfdata.pl escribe los datos en ficheros XML y los almacena en ficheros RRD usando using RRDtool.\\
+
+Antes de elegir un modo, tómese un momento para leer la documentación y decidir qué forma es la mejor para su instalación.
+
+====== Comparación de los diferentes modos ======
+
+===== Modo Síncrono =====
+
+{{:synchronous.png?150 |}} El "Modo Síncrono" es el más simple y sencillo de configurar. Nagios llama al script de perl ''process_perfdata.pl'' para cada servicio y equipo, respectivamente, para procesar los datos. El modo síncrono escala bien hasta unos 1.000 servicios con un intervalo de 5 minutos.
+
+
+===== Modo Masivo =====
+
+{{:bulk.png?150 |}} En el modo masivo Nagios escribe los datos necesarios en un fichero temporal. Después de un intervalo de tiempo definido este fichero es procesado de golpe y borrado a continuación.
+
+El número de llamadas a process_perfdata.pl se reduce al mínimo. Dependiendo del tiempo y la cantidad de datos recolectados hay muchas menos llamadas de sistema. En su lugar, la ejecución de process_perfdata.pl dura más tiempo.
+
+**Nota**
+Al usar este modo debería vigilar el tiempo de ejecución de process_perfdata.pl. Durante su ejecución nagios no ejecuta ningún chequeo.
+
+ejemplo de var/perfdata.log:
+<code>
+2007-10-18 12:05:01 [21138] 71 Lines processed
+2007-10-18 12:05:01 [21138] .../spool/service-perfdata-1192701894-PID-21138 deleted
+2007-10-18 12:05:01 [21138] PNP exiting (runtime 0.060969s) ...
+</code>
+
+71 líneas han sido procesadas en  0.06 segundos. Este corresponde a un volumen de datos de unos 2000 servicios y a un intervalo de procesado de 10 segundos. Lo que seignifica que se ha bloqueado a nagios durante 0.06 segundos exactamente.
+
+===== Modo Masivo con NPCD =====
+
+{{:bulk-npcd.png?150 |}} Visto desde el punto de vista de Nagios, este es el mejor modo de procesado, puesto que Nagios no es bloquedado.
+
+Nagios de nuevo, usa un fichero temporal para almacenar los datos y ejecuta un comando después de cierto tiempo predefinido. En lugar de procesar inmediatamente los datos mediante process_perfdata.pl, el fichero es movido a un directorio de spool. Debido a que únicamente estamos moviendo un fichero del mismo sistema de ficheros, esto no lleva prácticamente tiempo, por lo que nagioses capaz de ejecutar su trabajo de forma inmediata.
+
+El demonio NPCD (Nagios Performance C Daemon) monitoriza el directorio en busca de nuevos ficheros y le pasa los nombres a process_perfdata.pl. El procesado de los datos esta desacoplado de Nagios. NPCD es capaz de lanzar múltiples hilos de ejecución para el procesado de datos.
+
+===== Modo Masivo con npcdmod =====
+
+{{:bulk-npcdmod.png?150 |}} Este escenario incluye npcdmod.o, un módulo NEB.
+Se reduce la configuración del "Modo Masivo con NPCD" a un par de líneas en nagios.cfg
+
+Es similar al "Modo Masivo con NPCD" y tiene exactamente la misma funcionalidad y rendimiento.
+
+===== Gearman Mode =====
+
+{{:gearman.png?150 |}}
+TODO
+
+===== La decisión =====
+El modo que debe elegir dependerá del tamaño de su instalación de Nagios. Encontrará detalles en la documentación.
+
+[[start|volver a contenidos]] | [[install|instalación]]

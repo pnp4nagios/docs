@@ -1,0 +1,12 @@
+====== rrdtool-not-found ======
+
+To create the graphs PNP requires the complete path to the RRDtool binary.
+
+The path is defined in config.php.
+
+<code php>
+#
+# Path to rrdtool
+#
+$conf['rrdtool'] = "/usr/bin/rrdtool";
+</code>

@@ -1,0 +1,29 @@
+==== Nuevo en PNP 0.6.x =====
+
+
+{{ :pnp-0.6:gallery:pnp-preview-05-08-2009.png?200|Adelanto de PNP 0.6.x }}
+
+El trabajo sobre la nueva version 0.6.x está en progreso.
+
+A partir de esta versión 0.6.x hemos cambiado de subversion a GIT. El [[http://pnp4nagios.git.sourceforge.net|repositorio de código fuente]] está disponible en sourceforge.
+
+
+**Funciones ya implementadas**
+  * Frontal Web basado en [[http://www.kohanaphp.com|Kohana]]
+  * Frontal Web basado en [[http://jqueryui.com/themeroller/|jQuery Themes]]
+  * Funciones Javascript usando[[http://jquery.com/|jQuery]] plugins  
+  * process_perfdata.pl es capaz de usar una base de datos RRD por origen de datos
+  * instalador mejorado. Especificación de directorio de layouts usando --with-layout
+  * Los errores de RRDtool se muestran ahora como imágenes. No más errores de imágenes que no se muestran
+  * Las plantillas PNP ya no pueden sobreescribir variables internas
+  * Las plantillas PNP de la versión 0.4.x todavía se pueden usar
+  * Refactorización de las funciones de PDF
+  * Optimización de la plantilla default.php
+  * Exportación de bases de datos RRD a formatos XML, CSV y JSON usando la función "export" de RRDtool
+  * Refactorización de las funciones de Página
+  * Las páginas de error enlazan a las [[http://docs.pnp4nagios.org/es/faq|FAQ online]]
+  * Mouseover Popup en el frontal web de Nagios vía jQuery.clueTip plugin
+  * Soporte completo de rrdcached
+
+
+[[start|volver a contenidos]] | [[about#system_requirements|requerimientos de sistema]]

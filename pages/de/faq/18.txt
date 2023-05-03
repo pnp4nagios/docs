@@ -1,0 +1,3 @@
+===== xport-host-service =====
+
+Der Xport-Controller benötigt "host"- und "srv"-URL-Parameter (''&host=<Host>&srv=<Service>'').

@@ -1,0 +1,94 @@
+====== RRDtool Cache Daemon ======
+
+Dans les installations de supervision importantes, généralement, nous rencontrons un taux relativement élevé de charge d'E/S pendant le traitement des données de performance . RRDtool doit faire beaucoup de mises à jour sur disques, mais il ne peut pas utiliser le cache disque d'une manière optimale.
+
+Une amélioration est apportée par la collecte et le tri des données. Il est plus efficace d'écrire de nombreuses mises à jour d'une base de données RRD dans un seul bloc. Le cache disque peut être utilisé de manière plus efficace de cette façon.
+
+Le dernier RRDtool ( [[http://oss.oetiker.ch/rrdtool-trac/browser/trunk/program|SVN trunk 1550+]] ) rrdcached contient exactement ce qui devrait améliorer cette situation.
+
+A ce stade, je tiens à remercier Florian octo Forster, Kevin Brintnall and Tobi Oetiker. Le développement de ce daemon a été coordonné de façon exemplaire sur la [[http://www.mail-archive.com/rrd-developers@lists.oetiker.ch/index.html|rrd-developers]] mailing list.
+
+===== Mode de fonctionnement =====
+
+Le rrdcached fonctionne comme un démon en tâche de fond et ouvre une socket TCP ou UNIX, il attend les demandes de rrdtool. Pour des raisons de sécurité les nouvelles versions de rrdcached ne peuvent pas utiliser des chemins absolus pour l'accès au réseau.  La seule façon possible est l'utilisation des sockets unix.
+
+==== rrdcached ====
+
+rrdcached reconnait un nombre important d'options qui sont mises en oeuvre au démarrage.
+
+Option -l définit le socket d'écoute du daemon. Le port TCP par défaut est le 42217.
+
+<code>
+-l unix:/path/to/rrdcached.sock
+-l /path/to/rrdcached.sock
+-l 127.0.0.1
+-l 127.0.0.1:8888
+</code>
+
+Option -P specifie quelles commandes seront utilisables avec les bases de données RRD
+
+<code>-P FLUSH,PENDING</code>
+
+Option -s permet de changer le groupe d'appartenance du socket unix
+
+<code>-s nagios</code>
+
+Option -m place les permissions sur le socket unix (format octal)
+
+<code>-m 0660</code>
+
+Option -w spécifie l'intervalle (en secondes) après lequel les données seront écrites sur le disque.
+
+<code>-w 1800</code>
+
+Option -z définit un délai maximum pour étaler les cycles d'écriture entre [0-delay] pour éviter les accès d'écritures parallèles. La valeur de l'option -z ne doit pas être plus grande que celle de l'option -w.
+
+<code>-z 1800</code>
+
+Option -p définit un fichier PID
+
+<code>-p /var/run/rrdcached.pid</code>
+
+Option -j définit le chemin pour un répertoire de journalisation. Toutes les demandes seront écrites et pourrons être exécuter après un redémarrage du daemon suite à un crash
+
+<code>-j /var/cache/rrdcached</code>
+
+Ces options peuvent être utilisées pour appeler rrdcached avec les paramètres suivants
+
+<code> rrdcached -w 1800 -z 1800 -p /tmp/rrdcached.pid -j /tmp  -s nagios -m 0660 -l unix:/tmp/rrdcached.sock</code>
+
+==== rrdtool ====
+
+RRDtool, lui-même, sera informé par le daemon avec l'option --daemon=<socket>.
+
+   rrdtool --daemon=unix:/tmp/rrdcached.sock update ...
+
+Bien sûr, cela doit correspondre avec les options de rrdcached!
+
+===== Intégration dans PNP =====
+
+Deux composantes de PNP sont utilisées avec rrdcached, il faut apporter des changements dans les deux fichiers de configuration correspondants.
+
+1. Modification du process process_perfdata.cfg pour le collecteur de données process_perfdata.pl 
+
+<code>
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+RRD_DAEMON_OPTS = unix:/var/run/rrdcached.sock
+</code>
+
+2. Modification du fichier config_local.php (ou config.php) pour l'interface web
+
+<code>
+#
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+# $conf['RRD_DAEMON_OPTS'] = 'unix:/tmp/rrdcached.sock';
+$conf['RRD_DAEMON_OPTS'] = 'unix:/var/run/rrdcached.sock';
+</code>
+
+Les exemples de fichiers contiennent les options les plus pertinentes.
+
+[[start|Retour à l'index]] | [[rrd_convert|migration des fichiers RRD]]

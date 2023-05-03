@@ -1,0 +1,98 @@
+====== PNP Web Frontend ======
+
+Das Verhalten des PNP-Web-Frontend lässt sich über die Config-Datei ''etc/config.php'' beeinflussen.
+Diese Datei wird bei Updates von PNP immer wieder überschrieben, da die meisten Pfade und Optionen bereits durch ''./configure'' ermittelt werden.
+
+Eigene Anpassungen sollten daher in der Datei etc/config_local.php erfolgen. Sollte die Datei noch nicht existieren, kann die config.php als Vorlage verwendet werden.
+
+===== etc/pnp/config.php =====
+
+Im folgenden die wichtigsten Parameter:
+
+Der Pfad zum RRDtool-Binary. Wird von ''./configure'' ermittelt.
+
+   $conf['rrdtool'] = "/usr/bin/rrdtool";
+
+----
+
+Höhe und Breite der RRD-Graphen
+
+   $conf['graph_width'] = "500";
+   $conf['graph_height'] = "100";
+
+----
+Bildschirmdimensionen ändern sich, Blattgrößen nicht. Um unterschiedliche Einstellungen zu ermöglichen, können für die Generierung von PDF-Dateien eigene Werte definiert werden. Wenn diese Variablen nicht definiert sind, werden die Werte der Graphen benutzt.
+Höhe und Breite der RRD-Graphen bei PDFs
+
+   $conf['pdf_width'] = "675";
+   $conf['pdf_height'] = "100";
+
+----
+Zusätzliche Optionen, die bei jedem Aufruf von RRDTool mit übergeben werden. Beispielsweise ''--slope-mode'', um die Graphen etwas zu glätten.
+
+   $conf['graph_opt'] = "";
+
+----
+Der Pfad zu den von ''process_perfdata.pl'' erstellten RRD- und XML-Dateien
+
+   $conf['rrdbase'] = "/usr/local/pnp4nagios/var/perfdata/";
+
+----
+Pfad zu den Config-Files für die [[Pages]].
+
+   $conf['page_dir'] = "/usr/local/pnp4nagios/etc/pages/";
+
+----
+
+Wert in Sekunden, nachdem die PNP-Seiten neu geladen werden sollen.
+
+   $conf['refresh'] = "90";
+
+----
+
+
+Maximales Alter der RRD-Files in Sekunden. Nach Erreichen dieses Wertes werden Links zu den Graphen als "inactive" gekennzeichnet.
+
+   $conf['max_age'] = 60*60*6;
+
+----
+
+
+Basis-URL zu den Nagios CGIs.
+
+   $conf['nagios_base'] = "/nagios/cgi-bin";
+
+----
+
+Liste von Usern, für die Links zu den Services des aktuellen Hosts angezeigt werden sollen.
+
+   $conf['allowed_for_service_links'] = "EVERYONE";
+
+----
+
+Liste von Usern, für die das Host-Suchfeld angezeigt werden soll.
+
+   $conf['allowed_for_host_search'] = "EVERYONE";
+
+----
+
+Wird PNP nur mit der Angabe eines Hosts ( index.php?host=<myserver> ) aufgerufen, so wird eine Übersicht aller Services angezeigt, wenn der User in dieser Liste enthalten ist.
+
+   $conf['allowed_for_host_overview'] = "EVERYONE";
+
+----
+
+Das Array $views[] legt fest, welche Zeitspannen die RRD-Graphen dargestellen sollen. Der Titel und die Anzahl der Graphen kann somit hier zentral definiert werden.
+
+<code>
+$views[] = array('title' => 'One Hour',  'start' => (60*60) );
+$views[] = array('title' => '4 Hours',   'start' => (60*60*4) );
+$views[] = array('title' => '25 Hours',  'start' => (60*60*25) );
+$views[] = array('title' => 'One Week',  'start' => (60*60*25*7) );
+$views[] = array('title' => 'One Month', 'start' => (60*60*24*32) );
+$views[] = array('title' => 'One Year',  'start' => (60*60*24*380) );
+</code>
+
+Sie können hier auch weitere Views definieren, sollten aber dabei berücksichtigen, dass im Normalfall ALLE definierten Views angezeigt werden.
+
+[[start|zurück zur Übersicht]] | [[Timeranges]]

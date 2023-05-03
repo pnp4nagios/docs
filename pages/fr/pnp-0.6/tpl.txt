@@ -1,0 +1,160 @@
+====== Qu'est-ce qu'un "template" ? ======
+
+Les "templates" sont des modèles que PNP utilise pour l' aspect des graphiques produits à partir des données fournies par RRD (Round-Robin-Data).
+
+Le "template" correspond au service check_<commande> qui a récupéré les données. La suite décrit où sont stockés les "templates" et comment ils sont sélectionnés.
+
+
+===== Comment un "template" est-il sélectionné ? =====
+
+Les "templates" sont stockés dans deux sous-répertoires de celui de pnp (ex. /usr/share/pnp/...)
+
+  * .../templates.dist - pour les "templates" fournis avec le packet PNP.
+  * .../templates      - pour les "templates" personnalisés. Ceux-ci ne sont pas modifiés lors d'une mise à jour.
+  * .../templates.special - pour des "templates" particuliers qui seront décrits plus loin.
+
+Depuis la version 0.6.5 de PNP, d'autres emplacements peuvent être définis dans le fichier de configuration .../etc/config.php .
+
+Ainsi, pour la représentation graphique du service "http" pour l'hôte (Host) "localhost", PNP consulte en premier lieu le fichier XML ".../perfdata/localhost/http.xml". Ce fichier est généré automatiquement avec les données "performance-data" et contient les informations correspondantes à l'hôte et au service. Par ailleurs, il fournit également des renseignements sur le plugin utilisé et sur les données "performance-data".
+Dans l'exemple suivant, le nom du "template" qui sera utilisé est noté entre les balises <TEMPLATE>.
+
+''**/localhost/http.xml**''
+<code xml>
+<NAGIOS>
+  <DATASOURCE>
+    <TEMPLATE>check_http</TEMPLATE>
+    <DS>1</DS>
+    <NAME>time</NAME>
+    <UNIT>s</UNIT>
+    <ACT>0.006721</ACT>
+    <WARN>1.000000</WARN>
+    <CRIT>2.000000</CRIT>
+    <MIN>0.000000</MIN>
+    <MAX></MAX>
+  </DATASOURCE>
+  <DATASOURCE>
+    <TEMPLATE>check_http</TEMPLATE>
+    <DS>2</DS>
+    <NAME>size</NAME>
+    <UNIT>B</UNIT>
+    <ACT>263</ACT>
+    <WARN></WARN>
+    <CRIT></CRIT>
+    <MIN>0</MIN>
+    <MAX></MAX>
+  </DATASOURCE>
+...
+</NAGIOS>
+
+</code>
+
+PNP recherche maintenant un "template" portant le nom ''check_http.php'' dans l'ordre suivant des dossiers :
+  - templates/check_http.php
+  - templates.dist/check_http.php
+  - <autre défini dans config.php>/check_http.php
+  - templates/default.php
+  - templates.dist/default.php
+
+Le "template" ''default.php'' est particulier car il sera sélectionné si aucun autre portant le nom recherché n'a été trouvé.
+
+===== Créer un "template" personnalisé =====
+
+Les "templates" dans PNP sont des fichiers PHP qui lui sont associés pendant son fonctionnement grâce à la fonction PHP ''include()''.
+Ceci a comme conséquence que tout code PHP contenu dans les templates sera interprété, et permet le traitement de toutes les valeurs par PHP.
+
+Les "templates" de PNP doivent avoir les propriétés suivantes :
+  - ils doivent contenir un code PHP valide.
+  - ils ne doivent engendrer aucune exception.
+  - ils doivent renseigner les deux tableaux (Arrays) $opt[] et $def[].
+
+Les deux PHP-Arrays $opt[] et $def[] constituent l'appel de '''rrdtool graph'''. Toutes les options mises à disposition de RRDtool sont donc disponibles. Ces dernières sont décrites sur le site [[http://oss.oetiker.ch/rrdtool/doc/rrdgraph.en.html|RRDtool Homepage]].
+
+Par ailleurs les "templates" peuvent utiliser les autres données contenues dans le fichier XML correspondant.
+
+Les options les plus utiles peuvent facilement se déduire à l'aide du "template" relativement simple ''response.php''.
+
+<code php>
+<?php
+#
+$opt[1] = "--title \"Response Time For $hostname / $servicedesc\" ";
+#
+$def[1] =  "DEF:var1=$RRDFILE[1]:$DS[1]:AVERAGE " ;
+$def[1] .= "AREA:var1#00FF00:\"Response Times \" " ;
+$def[1] .= "LINE1:var1#000000 " ;
+$def[1] .= "GPRINT:var1:LAST:\"%3.4lg %s$UNIT[1] LAST \" ";
+$def[1] .= "GPRINT:var1:MAX:\"%3.4lg %s$UNIT[1] MAX \" ";
+$def[1] .= "GPRINT:var1:AVERAGE:\"%3.4lg %s$UNIT[1] AVERAGE \" ";
+?>
+</code> 
+
+
+
+//Rédaction en cours. Merci de consulter les autres traductions en attendant...//
+
+**''$opt[1] = "--title ..."''**  définit les options de RRDtool pour le premier champ de données dans le tableau (Array). Ici il s'agit du titre du graphique. Comme on peut le remarquer, les guillemets sont masqués par le caractère d'échapement Backslash (\).
+
+**''$def[1] =  "DEF:var1=$RRDFILE[1]:$DS[1]:AVERAGE ";''** précise quelles données sont lues depuis quel fichier RRD. La variable $RRDFILE[1] contient le chemin vers le fichier de données RRD du service concerné. $DS[1] indique quelle sera la rangée de données à extraire. 
+
+**''$def[1] .= "AREA:var1#00FF00:\"Response Times \" ";''**  l'opérateur ".=" permet d'ajouter des données à l'Array $def[1]. L'aire (AREA) est représentée à l'aide des données transmises par la variable var1. La couleur est définie par le code hexadécimal #00FF00. Le libellé utilisé est précisé par le texte "Response Times".
+
+**''$def[1] .= "LINE1:var1#000000 ";''** trace une ligne noire (#000000) d'épaisseur 1 pixel (LINE1, maximum 3 pixels avec LINE3) délimitant l'aire.
+
+
+**''$def[1] .= "GPRINT:var1:LAST:\"%3.4lg %s$UNIT[1] LAST \" "; \\
+$def[1] .= "GPRINT:var1:MAX:\"%3.4lg %s$UNIT[1] MAX \" "; \\
+$def[1] .= "GPRINT:var1:AVERAGE:\"%3.4lg %s$UNIT[1] AVERAGE \" ";''**
+
+Les trois instructions GPRINT ci-dessus constituent la légende du graphique. Les valeurs actuelles sont formatées en suivant la syntaxe [[wp>printf]]. D'autres exemples utiliseront des tableaux (ARRAY).
+
+===== Variables diponibles =====
+
+En cours de fonctionnement, PNP ne stocke pas seulement des données "performance-data" grâce au script ''process-perfdata.pl'', mais également d'autres valeurs exportées par Nagios. Ces valeurs sont enregistrées dans le fichier XML concerné.
+Dans la première section, les données "performance-data" sont décomposées par champs.
+
+<code xml>
+<NAGIOS>
+  <DATASOURCE>
+    <TEMPLATE>check_http</TEMPLATE>
+    <DS>1</DS>
+    <NAME>time</NAME>
+    <UNIT>s</UNIT>
+    <ACT>0.006721</ACT>
+    <WARN>1.000000</WARN>
+    <CRIT>2.000000</CRIT>
+    <MIN>0.000000</MIN>
+    <MAX></MAX>
+  </DATASOURCE>
+...
+</NAGIOS>
+</code>
+
+Le champs <DS> pointe vers la rangée contenue dans la série de données fournies par le fichier RRD et sert également de clé pour l'accès aux tableaux suivants.
+Ainsi l'Array ''$UNIT[1]'' pointe vers l'unité (Mb, Gb, ...) précisée dans la première rangée de données.
+
+Le fichier XML contient encore d'autres informations. Si le script ''process_perdata.pl'' fonctionne en mode "sync", alors toutes les macros ainsi que leurs valeurs actuelles sont disponibles.
+L'extrait suivant a été tronqué pour des raisons de lisibilité.
+
+
+<code xml>
+<NAGIOS>
+...
+  <NAGIOS_SERVICENOTIFICATIONID>8418</NAGIOS_SERVICENOTIFICATIONID>
+  <NAGIOS_SERVICENOTIFICATIONNUMBER>0</NAGIOS_SERVICENOTIFICATIONNUMBER>
+  <NAGIOS_SERVICEOUTPUT>HTTP OK HTTP/1.1 200 OK - 10087 bytes in 0.125 seconds</NAGIOS_SERVICEOUTPUT>
+  <NAGIOS_SERVICEPERCENTCHANGE>0.00</NAGIOS_SERVICEPERCENTCHANGE>
+  <NAGIOS_SERVICEPERFDATA>time=0.124811s;;;0.000000 size=10087B;;;0</NAGIOS_SERVICEPERFDATA>
+  <NAGIOS_SERVICEPERFDATAFILE></NAGIOS_SERVICEPERFDATAFILE>
+  <NAGIOS_SERVICEPROBLEMID>0</NAGIOS_SERVICEPROBLEMID>
+  <NAGIOS_SERVICESTATE>OK</NAGIOS_SERVICESTATE>
+  <NAGIOS_SERVICESTATEID>0</NAGIOS_SERVICESTATEID>
+  <NAGIOS_SERVICESTATETYPE>HARD</NAGIOS_SERVICESTATETYPE>
+  <NAGIOS_SHORTDATETIME>27-12-2007 13:51:23</NAGIOS_SHORTDATETIME>
+...
+</NAGIOS>
+</code>
+
+Les balises XML sont utilisables par PNP en tant que variables du même nom.
+Ainsi, à partir de la balise ''<NAGIOS_SERVICEOUTPUT>'' il est possible de former la variable ''$NAGIOS_SERVICEOUTPUT''.
+
+[[start|retour au sommaire]] | [[tpl_custom|Templates personnalisés]]
+

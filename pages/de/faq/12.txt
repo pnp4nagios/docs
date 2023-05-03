@@ -1,0 +1,5 @@
+====== Template übergibt Array $opt[] nicht ======
+
+Das für diesen Service verwendete Template übergibt kein Array $opt[] zurück an PNP.
+
+Der Pfad zum Template wird in der Fehlermeldung übergeben.

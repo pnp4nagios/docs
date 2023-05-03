@@ -1,0 +1,91 @@
+====== RRDtool Cache Daemon ======
+
+In großen Installationen wird man über kurz oder lang feststellen, dass die Verarbeitung der Performancedaten eine recht hohe I/O-Last zur Folge hat. RRDtool muss extrem viele Updates auf Disk schreiben, kann dabei jedoch den Disk Cache nicht optimal ausnutzen.
+
+Eine Optimierung stellt das Sammeln und Sortieren der Daten dar. Es ist für das System effektiver, viele Updates im Block in eine RRD Datenbank zu schreiben. Der Disk Cache kann dabei effektiver genutzt werden.
+
+Mit der aktuellen RRDtool-Version ( [[http://oss.oetiker.ch/rrdtool-trac/browser/trunk/program|SVN trunk 1550+]] ) ist der rrdcached enthalten, der genau diese Situation verbessern soll.
+
+An dieser Stelle möchte ich mich bei Florian octo Forster, Kevin Brintnall und Tobi Oetiker bedanken. Die Entwicklung dieses Daemons wurde vorbildlich auf der [[http://www.mail-archive.com/rrd-developers@lists.oetiker.ch/index.html|rrd-developers]] Mailingliste koordiniert.
+
+
+===== Arbeitsweise =====
+
+Der rrdcached arbeitet als Daemon im Hintergrund und öffnet einen UNIX oder TCP Socket, auf dem er auf Anfragen von rrdtool wartet.
+
+
+
+==== rrdcached ====
+
+
+Der rrdcached kennt einige wichtige Optionen, die beim Start übergeben werden.
+
+Option -l definiert den Socket, auf dem der rrdcached Update-Requests annimmt. Der Default-UDP-Port ist 42217 
+ 
+<code>
+-l unix:/pfad/zum/rrdcached.sock
+-l 127.0.0.1
+-l 127.0.0.1:8888
+</code>
+
+Option -L ist ein unprivilegierter Socket, der nur den FLUSH-Befehl zum Schreiben der RRD-Datenbanken durch den Daemon auslöst.  
+
+<code>-L 127.0.0.1</code>
+
+Option -w bestimmt den Intervall in Sekunden, in dem die Daten auf Disk geschrieben werden sollen.
+
+<code>-w 1800</code>
+
+Option -z definiert einen Delay, der die über die Option -w definierten Schreibzyklen in einen zufälligen Bereich [0-delay] verteilt, um gleichzeitige Schreibzugriffe zu verhindern. Der Wert der Option -z darf nicht größer gewählt werden als -w.
+
+<code>-z 1800</code>
+
+Option -p definiert ein PID File
+
+<code>-p /var/run/rrdcached.pid</code>
+
+Option -j definiert den Pfad zu einem Journal-Verzeichnis. Dort werden alle Aufträge protokolliert und ggf. beim nächsten Start nachgefahren, falls der rrdcached-Daemon abstürzt.
+
+<code>-j /var/cache/rrdcached</code>
+
+Daraus ergibt sich beispielsweise ein Aufruf von rrdached mit folgenden Parametern
+
+<code> rrdcached -w 1800 -z 1800 -p /tmp/rrdcached.pid -j /tmp -l 127.0.0.1</code>
+
+
+==== rrdtool ====
+
+
+RRDtool selbst wird die Existenz des Daemons über die Option --daemon=<socket> mitgeteilt.
+
+   rrdtool --daemon=127.0.0.1 update ...
+
+Dies muss natürlich mit den Startoptionen des rrdcached übereinstimmen!
+
+
+
+===== Integration in PNP =====
+
+Da zwei Bestandteile von PNP auf den rrdcached vorbereitet werden müssen, ergeben sich Änderungen in zwei Config-Files.
+
+1. Anpassen der process_perfdata.cfg für den Datensammler process_perfdata.pl 
+
+<code>
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+RRD_DAEMON_OPTS = 127.0.0.1:8888
+</code>
+
+2. Anpassen der config_local.php für das Webinterface
+
+<code>
+#
+# EXPERIMENTAL rrdcached Support
+# Use only with rrdtool svn revision 1511+
+#
+# $conf['RRD_DAEMON_OPTS'] = 'unix:/tmp/rrdcached.sock';
+$conf['RRD_DAEMON_OPTS'] = '127.0.0.1:8888';
+</code>
+
+Ab PNP-0.4.11 sind die passenden Optionen bereits in den Beispieldateien enthalten. 

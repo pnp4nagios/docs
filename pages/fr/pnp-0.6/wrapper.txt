@@ -1,0 +1,22 @@
+check_procs est un exemple de plugin ne donnant pas d'informations de type "performance-data":
+
+<code>./check_procs -a ndo2db -w 1: -c 0:
+PROCS OK: 2 processes with args 'ndo2db'</code>
+
+Cela peut être corrigé par le script suivant:
+
+**check_procs.sh**
+<code>#!/bin/bash
+LINE=`/usr/local/nagios/libexec/check_procs $*`  # On sauve la sortie du script dans la variable LINE
+RC=$?                                            # On sauve le code de sortie dans la variable RC
+COUNT=`echo $LINE | awk '{print $3}'`            # On sauve le contenue de la 3ème col de la variable LINE dans la variable COUNT
+PROCS=`expr $COUNT - 1`                          # check_procs.sh est computé, donc, soustraire un
+LINE=`echo $LINE | sed "s/: $COUNT /: $PROCS /"` # On remplace le numéro
+echo $LINE \| procs=$PROCS                       # On affiche le tout
+exit $RC                                         # On sort avec le code de sortie du script initial</code>         
+
+Maintenant vous allez avoir les informations "performance-data" grâce au libellé suivant :
+<code>./check_procs.sh -a ndo2db -w 1: -c 0:</code>
+
+ce qui conduit à la sortie :
+<code>PROCS OK: 2 processes with args 'ndo2db'| procs=2</code>

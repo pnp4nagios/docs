@@ -1,0 +1,5 @@
+====== PHP module filter ======
+
+El módulo PHP ''filter'' no se ha cargado o no está compilado.
+
+http://www.php.net/filter

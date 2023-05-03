@@ -1,0 +1,148 @@
+====== NPCD ======
+
+NPCD (Nagios-Perfdata-C-Daemon) wurde geschrieben um die asynchrone Bearbeitung von Nagios Performancedaten zu ermöglichen.
+
+
+===== Einleitung =====
+
+In großen Nagios-Installationen kann es zu nicht akzeptierbaren Verspätungen seitens der Checks kommen. Das bedeutet, dass Nagios einen Check zum Zeitpunkt ''x'' ausführen soll, diesen aber erst ''y'' Sekunden später tatsächlich ausführt.
+
+Wenn man dem Nagios Daemon mitteilt, dass man nach jedem einzelnen Check auch die Performancedaten verarbeiten möchte, so geht dies bis zu einem bestimmten Grad gut, ab einer gewissen Anzahl von Checks pro Sekunde allerdings kommt man relativ schnell zu den sog. Latency-Problemen.
+
+Um die Anzahl der Aktionen pro Check zu verringern, kann man nun PNP im [[pnp::config::#bulk_mode|Bulk Mode]] verwenden, wobei die Performancedaten zunächst vom Nagios Prozess gesammelt und anschließend ebenfalls vom Nagios-Prozess selbst verarbeitet werden. 
+
+Man kann aber auch dem Nagios-Prozess mitteilen, dass die Verarbeitung der Performancedatendateien lediglich durch das Verschieben der Dateien in ein Spool-Verzeichniss geschehen soll, welches für den Nagios-Prozess selbst eine sehr schnelle Aktion ist und die Performance nicht nennenswert beeinflusst und somit dem Core mehr Zeit für seine eigentliche Arbeit lässt: weitere Checks ausführen, Alamierungen bereitstellen, etc.
+
+
+===== Wie NPCD arbeitet =====
+
+Wie bereits erwähnt, ist die Arbeit der Performancedatenverarbeitung durch das schnelle Verschieben der Datei bereits erledigt, aber das bringt die Performancedaten noch nicht in die RRD-Datenbank.
+
+Um den Transport der Performancedatendateien kümmert sich nun der NPCD-Daemon, abseits vom Nagios Prozess, in dem er regelmäßig in das Spool-Verzeichnis guckt und für jede dort gefundene Datei eine Aktion ausführt.
+
+Nachdem NPCD gestartet wurde, erstellt er sich eine Liste von Dateinamen des Spoolverzeichnisses und startet für jede gefundene Datei einen Thread zur weiteren Verarbeitung mittels dem ''perfdata_file_run_cmd'' und dem optionalen ''perfdata_file_run_cmd_arg'' als zusätzliches Argument.
+
+Da das Format der Performancedatendateien dem Format der 'normalen' PNP Bulkmodus Dateien gleicht, kann NPCD nun für jede gefundene Datei also ''process_perfdata.pl'' im [[pnp::modes::#bulk_mode|Bulk Modus]] aufrufen.
+
+
+
+===== Vor- und Nachteile =====
+
+**Pro:**
+  * bessere Performance für Nagios
+    * Aufgrund der vom Nagios-Prozess getrennten Verarbeitung der Performancedaten hat Nagios mehr Zeit für die wichtigen Dinge
+  * Kein Datenverlust
+    * Solange Nagios-Performancedatendateien im Spool-Verzeichnis ablegt, gehen keine Daten verloren. Selbst wenn der NPCD mal nicht laufen sollte (Bsp. nach Neustart des Systems), werden die Dateien nach Wiederanlauf in chronologischer Reihenfolge bearbeitet ($TIMET$ Makro beim verschieben ins Spool-Verzeichnis)
+
+**Kontra:**
+  * Keine Echtzeitverarbeitung der Performancedaten
+    * Aufgrund des Rhythmusses, wann Nagios die Performancedatendateien verschiebt (''service_perfdata_file_processing_interval'')
+    * Nach jedem Lauf durch alle Dateien des Spoolverzeichnisses wartet NPCD 10 Sekunden lang auf neue Dateien
+
+
+
+====== NPCD Config ======
+
+NPCD muss zwangsläufig über eine Konfigurationsdatei gesteuert werden. Eine Beispielkonfiguration liegt der PNP-Installation als ''npcd.cfg-sample'' bei.
+
+
+Nach Umbenennen der ''-sample'' Datei zu ''npcd.cfg'' kann NPCD nun wie folgt gestartet werden:
+
+
+<code_bash>/usr/local/nagios/bin/npcd -f /usr/local/nagios/etc/pnp/npcd.cfg</code>
+oder
+<code_bash>/usr/local/nagios/bin/npcd -d -f /usr/local/nagios/etc/pnp/npcd.cfg</code>
+um NPCD im Hintergrund als Daemon laufen zu lassen.
+
+**Hinweis:** 
+Die ''-sample'' Datei sollte in jedem Fall in ''npcd.cfg'' umbenannt werden, da sie sonst bei einem Update von PNP überschrieben werden könnte.
+
+
+===== npcd.cfg-sample =====
+
+Dies sind die essentiellen Konfigurationsdirektiven für NPCD:
+
+<code># Privilege Options
+user = nagios
+group = nagios
+
+# Logging Options
+log_type = syslog
+log_file = /usr/local/nagios/var/npcd.log
+max_logfile_size = 10485760
+log_level=0
+
+# Processing Options
+perfdata_spool_dir = /usr/local/nagios/var/spool/perfdata/
+perfdata_file_run_cmd = /usr/local/nagios/libexec/process_perfdata.pl
+perfdata_file_run_cmd_args = -b
+
+# Thread Options
+npcd_max_threads=5
+
+# greedy options
+use_load_threshold = 0
+load_threshold = 10.0
+
+# Process Options
+pid_file=/var/run/npcd.pid
+</code>
+
+
+
+===== Die Direktiven =====
+
+  * **Privilege-Optionen**
+    * user <username> 
+      * NPCD versucht die Userberechtigung zu diesem User zu wechseln.
+      * **Default:** nagios
+    * group <groupname>
+      * NPCD versucht die Gruppenberechtigung zu dieser Gruppe zu wechseln.
+      * **Default:** nagios
+  * **Logging-Optionen**
+    * log_type <syslog> oder <file> 
+      * Log-Type, den NPCD zum Loggen verwenden wird
+      * **Default:** syslog
+    * log_file </pfad/zu/datei> 
+      * Falls ''log_type = file'' wird diese Logdatei verwendet
+      * **Default:** /usr/local/nagios/var/npcd.log
+    * max_logfile_size <bytes> 
+      * NPCD wird nach Erreichen der hier angegebenen Dateigröße eigenständig eine Logrotation durchführen
+      * **Default:** 10485760 = 10 MByte
+    * log_level <integer>
+      * Wie viel soll aufgezeichnet werden, möglich ist:
+        * 0  = Kein Log - außer Fehlern
+        * 1  = wenig Log - etwas mehr Aufzeichnen
+        * 2  = Mehr Log (aktuell ALLES)
+        * -1 = DEBUG Mode - Es wird alles aufgezeichnet und die Bearbeitung wird verlangsamt
+      * **Default:** 0
+  * **Bearbeitungs-Optionen**
+    *  perfdata_spool_dir  </path/to/spool/dir/>
+      * Das Verzeichnis, in das Nagios die Dateien verschiebt
+      * **Default:** /usr/local/nagios/var/spool/perfdata/
+    * perfdata_file_run_cmd </path/to/bin/filename>
+      * Das Programm, welches Nagios für jede Datei aufrufen soll
+      * **Default:**  /usr/local/nagios/libexec/process_perfdata.pl
+    * perfdata_file_run_cmd_args <option> 
+      * Das Argument, welches optional an ''perfdata_file_run_cmd'' angehängt wird
+      * **Default:** "-b"
+      * :!: Die Kommandozeile wird nach folgendem Schema aufgebaut: <code><perfdata_file_run_cmd> <perfdata_file_run_cmd_args> <filename_from_perfdata_spool_dir></code>
+  * **Thread-Optionen**
+    * npcd_max_threads <integer value>
+      * Anzahl der maximal zu startenden parallelen Threads
+      * **Default:** 5
+  * **Greedy-Optionen**
+    * use_load_threshold  <0 oder 1>
+      * definiert, ob NPCD bei Erreichen des load_thresholds die Anzahl der Threads begrenzen soll
+        * 0 = ausschalten (weitere Threads starten)
+        * 1 = einschalten
+      * **Default:** 0
+    * load_threshold <float value>
+      * wenn ''use_load_threshold'' auf 1 gesetzt ist, werden bei Erreichen dieses load limits keine neuen Threads gestartet
+      * **Default:** 10.0
+  * **Process-Optionen**
+    * pid_file </path/to/pid.file>
+      * Pfad zum PID File
+      * **Default:** /var/run/npcd.pid
+
+[[start|Zurück zur Doku]]

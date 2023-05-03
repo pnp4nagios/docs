@@ -1,0 +1,41 @@
+====== PNP Helper Functions ======
+
+PNP Helper functions are meant to simplify the creation of templates. In contrast to the rrd helper functions they don't call existing RRDtool functions.
+
+===== pnp::adjust_unit =====
+
+(string,number,string,number) **pnp::adjust_unit** ( $value, $base=1000, $format='%.3lf' )
+
+The purpose of this function is to "normalize" large numbers. Modern hard disks have reached sizes of several GB or TB and looking at numbers like 1521073648234 you begin to count the digits so it would be more convienient to translate the value. The same applies to network traffic.
+
+The function takes up to three parameters and returns an array with four elements in any case.
+  * The first parameter to be passed is the number (including an "UOM", if applicable)
+  * The second parameter is optional and defaults to "1000" (e.g. traffic), but might be "1024" (e.g. disk size) as well
+  * The third parameter is optional, defaults to '%.3lf', and specifies the format of the value to be returned
+
+<code php>
+$size = pnp::adjust_unit(1521073648234,1024,'%7.3lf');
+</code>
+
+Please note that "$size" is an array consisting of four fields:
+   $size[0] := "  1.383 T"
+contains the formatted value including the unit
+   $size[1] := "1.383"
+contains the formatted number
+   $size[2] := "T"
+contains the unit
+   $size[3] := "1099511627776"
+contains the divisor
+
+Assuming check_disk returns "MB" as UOM you can append that as well
+<code php>
+$disk = pnp::adjust_unit("1524MB",1024,'%7.3lf');
+</code>
+will result in
+$disk[0] := "1.448 GB"
+
+{{templates:check_disk_1.png|}}\\ 
+"old" check_disk template with %s directive\\ 
+
+{{templates:check_disk_2.png|}}\\ 
+"new" check_disk template with pnp::adjust_unit

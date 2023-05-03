@@ -1,0 +1,14 @@
+===== save-rrd-image =====
+
+During creation of a PDF document PNP temporarily saves the graph as an image in the file system. Only this way the graph can be included into the PDF document.
+
+The location is defined in ''etc/config.php''.
+
+<code php>
+#
+# Directory for Temporary Files used for PDF creation 
+#
+$conf['temp'] = "/var/tmp";
+</code>
+
+This message indicates that the web server user is not able to write into this directory.

@@ -1,0 +1,38 @@
+~~NOCACHE~~
+====== FAQ ======
+
+====== Installer ======
+
+{{page>:de:faq:i1}}
+{{page>:de:faq:i2}}
+{{page>:de:faq:i3}}
+{{page>:de:faq:i4}}
+{{page>:de:faq:i5}}
+{{page>:de:faq:i6}}
+{{page>:de:faq:i7}}
+{{page>:de:faq:i8}}
+
+====== Runtime Errors ======
+
+{{page>:de:faq:1}}
+{{page>:de:faq:2}}
+{{page>:de:faq:3}}
+{{page>:de:faq:4}}
+{{page>:de:faq:5}}
+{{page>:de:faq:6}}
+{{page>:de:faq:7}}
+{{page>:de:faq:8}}
+{{page>:de:faq:9}}
+{{page>:de:faq:10}}
+{{page>:de:faq:11}}
+{{page>:de:faq:12}}
+{{page>:de:faq:13}}
+{{page>:de:faq:14}}
+{{page>:de:faq:15}}
+{{page>:de:faq:16}}
+{{page>:de:faq:17}}
+{{page>:de:faq:18}}
+{{page>:de:faq:19}}
+{{page>:de:faq:20}}
+{{page>:de:faq:21}}
+{{page>:de:faq:22}}

@@ -1,0 +1,54 @@
+====== Checking the installation ======
+
+If everything went well until now you can try to call PNP using your web browser.
+On the assumption nagios can be reached using the URL ''/nagios'' PNP should be called using ''/nagios/pnp/index.php''.
+
+Called without any arguments PNP looks for RRD and XML files in share/perfdata and shows all graphs of the first host.
+
+ATTENTION: Immediately after (re-)starting Nagios after you enabled the processing of performance data you will get error messages in your browser because performance data has to be collected and stored in RRD files. Depending on the check interval you are using you have to wait some time before you can view the graphs.
+
+
+===== Debug Logfile =====
+
+Calling ''make install-config'' during installation will create a sample config file (''etc/pnp/process_perfdata.cfg-sample''). The values in the sample file will correspond to the defaults used by ''process_perfdata.pl'' so normally you do not have a file called ''process_perfdata.cfg'' while running the procedure.\\ 
+However you can influence the way ''process_perfdata.pl'' works by changing options which have to be specified in ''process_perfdata.**cfg**''. 
+
+The most important options launching PNP are LOG_LEVEL and LOG_FILE. We recommend setting the ''LOG_LEVEL'' value to "2" so you can track what process_perfdata.pl will do.
+Most likely we will ask for excerpts from perfdata.log if you open a [[about#support|support request]] on the mailing lists.
+
+During normal operation the debug level should be set to 0 to avoid performance issues due to unnecessary entries in the log file.
+
+
+
+
+
+
+
+
+
+
+
+
+===== Something went wrong =====
+
+Some basic settings should be checked
+
+1. Have any RRD and XML files been created?
+''process_perfdata.pl'' will create a new directory under share/perfdata for every host. In this directory an RRD database and an XML file will be created for every service.\\ 
+The error message “No valid RRD Files found” indicates that the plugin doesn't deliver any/valid performance data! Sometimes you have to specify additional options so that performance data is produced. In some cases a [[wrapper|wrapper script]] might help.\\ 
+However not all checks provide performance data. That applies - among others - to "check_ping" in contrast to "check_icmp" which does provide data (starting with Nagios plugin version 1.4.12 check_ping does provide performance data).\\ 
+Using the web interface the detail information of hosts/services show a field "Performance Data". If it is empty there is no data available so no files are written to the appropriate directory and that is why PNP does not provide you with graphs!\\ 
+The following image shows the information of a "PING" service. The output of the plugin is surrounded by a blue border, the performance data by a red one.\\ 
+{{:srv_info.png?350|status information}}
+
+2. Has nagios called ''process_perfdata.pl''?
+In the config file for process_perfdata.pl (''etc/pnp/process_perfdata.cfg'') you can increase the debug level. Data processing will be logged in ''var/perfdata.log''.
+
+3. Graphs are shown without text?
+Have a look at the [[about#system_requirements|requirements]].
+
+4. You can use the script [[verify_pnp_config|verify_pnp_config]] in the ''contrib'' directory of the installation folder to check your settings and if performance data is present and/or valid. The syntax is quite simple for that:
+<code>./verify_pnp_config -m <mode></code> whereas ''<mode>'' is one of "default", "bulk" or "npcd" (without quotes).
+
+
+[[start|back to contents]]

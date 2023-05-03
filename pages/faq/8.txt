@@ -1,0 +1,6 @@
+===== get-first-host =====
+
+PNP was called without specifying a host.
+While searching the directory ''var/perfdata'' no hosts were found.
+
+Please make sure that you enabled performance data processing and that your hosts/services deliver valid performance data. See [[:pnp-0.6:about#system_requirements|system requirements]], [[:pnp-0-6:verify|verify]] and [[:pnp-0.6:verify_pnp_config|verify script]] for details.

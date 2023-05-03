@@ -1,0 +1,15 @@
+====== Speichern des Graphen gescheitert ======
+
+PNP speichert den Graphen beim Erstellen eines PDF-Dokuments temporär als Bild im Filesystem.
+Nur so kann der Graph in das PDF-Dokument eingebunden werden.
+
+Der Speicherort ist in der etc/config.php definiert.
+
+<code php>
+#
+# Directory for Temporary Files used for PDF creation 
+#
+$conf['temp'] = "/var/tmp";
+</code>
+
+Diese Meldung weist auf fehlende Berechtigung des Webservers zum Schreiben in dieses Verzeichnis hin.

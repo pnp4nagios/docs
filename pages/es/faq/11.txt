@@ -1,0 +1,18 @@
+===== xml-structure-without-version-tag =====
+
+A partir de PNP 0.6, se ha introducido una etiqueta de versión. Este mensaje indica que esta etiqueta no se encuentra. El fichero xml parece que se haya creado con un versión de PNP inferior a 0.6.
+
+Si este error ocurre inmediatamente después de una actualización, debería ser suficiente esperar al próximo cheqeuo de Nagios, para que el fichero xml se recree.
+
+Si el error persiste, la causa podría ser una versión antigua de ''process_perfdata.pl''.
+
+Trozo de código de la estructura XML:
+
+<code>
+<NAGIOS>
+...
+  <XML>
+   <VERSION>4</VERSION>
+  </XML>
+</NAGIOS>
+</code>

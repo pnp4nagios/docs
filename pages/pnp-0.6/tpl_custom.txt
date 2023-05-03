@@ -1,0 +1,173 @@
+====== Custom Templates ======
+
+As already described under "[[tpl|What are templates ?]]" the appearance of graphs depends on the check command used.
+
+There are situations where this behaviour must be overruled, for example when universal commands have been defined.
+
+PNP, especially process_perfdata.pl, will search for a config file (<check_command>;.cfg) in the etc/check_commands directory and read its contents (if available).
+The following options can be defined in it:
+
+===== CUSTOM_TEMPLATE =====
+
+Outgoing from the following example of a Nagios command-definition:
+<code>
+define command {
+  command_name check_nrpe
+  command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$ -a "$ARG2$"
+}
+</code>
+
+This would lead to a call of the check_nrpe.php template even when the monitored host would use a completely different plugin which is called via NRPE.
+
+As our example command is called check_nrpe it will be searched for etc/check_commands/check_nrpe.cfg.
+
+During installation a sample config file with the extension .cfg-sample is copied to etc/check_commands.
+
+<code>
+# check_command check_nrpe!load!-w 4,4,4 -c 5,5,5
+# ________0__________|       |       |
+# ________1__________________|       |
+# ________2__________________________|
+#
+CUSTOM_TEMPLATE = 1
+</code>
+
+''CUSTOM_TEMPLATE = 1'' assures that only the contents of $ARG1$ will be used as a template name. As $ARG1$ contains "load" in this example the template name would result in "load.php".
+
+''CUSTOM_TEMPLATE = 0,1'' results in -> "check_nrpe_load.php" 
+
+''CUSTOM_TEMPLATE = 1,0'' results in -> "load_check_nrpe.php"
+
+This option has effect only during creation of the RRD database.
+
+
+===== DATATYPE =====
+
+The option "DATATYPE" controls the datatype which is used during creation of the RRD database. Default is "GAUGE". For consecutive values the type should be "COUNTER". Plugin-developers should use the unit "c" for counters but this is not always the case.
+
+To set all datasources to COUNTER
+<code>DATATYPE = COUNTER</code>
+
+Setting datasources to different types
+<code>DATATYPE = GAUGE,GAUGE,COUNTER,COUNTER</code>
+
+More datatypes are explained in the RRDTool documentation found at [[http://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html|rrdcreate]].
+
+This option has effect only during creation of the RRD database.
+
+===== USE_MIN_ON_CREATE and USE_MAX_ON_CREATE =====
+
+In a few situations it might be necessary to limit the values which are valid for RRDTool.
+
+RRD databases can be created with fixed minimum and maximum values. You will find further details at http://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html.
+
+Account for the maximum value taken from the performance data
+<code>USE_MAX_ON_CREATE = 1</code>
+
+Account for the minimum value taken from the performance data
+<code>USE_MIN_ON_CREATE = 1</code>
+
+This option has effect only during creation of the RRD database.
+
+===== RRD_STORAGE_TYPE =====
+
+<code>RRD_STORAGE_TYPE = SINGLE</code>
+The option RRD_STORAGE_TYPE defines the kind of data storage.
+
+Possible values are MULTIPLE and SINGLE, respectively.
+
+SINGLE: A RRD database per service
+
+MULTIPLE: One or more RRD databases per service. Each datasource will be stored in a separate RRD database.
+
+**ATTENTION:** The data will not be migrated automatically!
+You will find a conversion script [[rrd_convert|here]].
+
+This option has effect only during creation of the RRD database.
+
+===== RRD_HEARTBEAT =====
+
+**Starting with PNP 0.6.1**
+
+<code>RRD_HEARTBEAT = 305</code>
+
+After <RRD_HEARTBEAT> seconds RRDtool expects new data.
+
+More information at http://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
+
+This option has effect only during creation of the RRD database.
+
+===== Hints on Template Names =====
+
+In most situations, one can easily get desired template names, by using suitable command object definitions.
+
+Consider the followng example:
+<code>
+define command {
+  command_name check_by_ssh
+  command_line /usr/bin/ssh $HOSTADDRESS$ $ARG1$
+}
+</code>
+with commands like:
+<code>
+  …
+  check_command check_by_ssh!/usr/lib/nagios/plugins/check_load -w 4,4,4 -c 5,5,5
+  …
+</code>
+
+Even when using “CUSTOM_TEMPLATE = 1” one would end up in template names like “_usr_lib_nagios_plugins_check_load_-w_4,4,4_-c_5,5,5”, which is highly undesired, especially because of the parameters in it.
+
+**Solution 1: Split parameters into separate $ARGn$**
+
+A simple solution is to use the following command object definition:
+<code>
+define command {
+  command_name check_by_ssh
+  command_line /usr/bin/ssh $HOSTADDRESS$ $ARG1$ $ARG2$
+}
+</code>
+with commands like:
+<code>
+  …
+  check_command check_by_ssh!/usr/lib/nagios/plugins/check_load!-w 4,4,4 -c 5,5,5
+  …
+</code>
+(notice the additional “!”)
+
+This even works, when $ARG2$ is let empty.
+
+Of course one would still need to set “CUSTOM_TEMPLATE = 1”.
+
+
+**Solution 2: Hide the remote executor inside the command object definition**
+
+Another way is to “hide” the remote excutor in the respective command object definitions.
+
+Instead of defining:
+<code>
+define command {
+  command_name check_by_ssh
+  command_line /usr/bin/ssh $HOSTADDRESS$ $ARG1$ $ARG2$
+}
+</code>
+one would define the following for **every** command to be remotely executed:
+<code>
+define command {
+  command_name check_load_by_ssh
+  command_line /usr/bin/ssh $HOSTADDRESS$ /usr/lib/nagios/plugins/check_load $ARG1$
+}
+</code>
+with commands like:
+<code>
+  …
+  check_load_by_ssh!-w 4,4,4 -c 5,5,5
+  …
+</code>
+Of course one must not set “CUSTOM_TEMPLATE = 1” in this way.
+
+
+Which of above two solutions one follows is largely a matter of taste.
+
+
+
+[[start|back to contents]] | [[advanced|PNP in distributed environments]]

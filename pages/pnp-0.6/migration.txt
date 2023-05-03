@@ -1,0 +1,11 @@
+**Migration**
+
+Sometimes you want to migrate to a new server and/or new OS. The following assumes that you **don't** change monitoring related software (monitoring kernel, monitoring addons)!
+
+Keeping the directories identical while switching servers it should be sufficient to just copy the rrd-files. xml-files are recreated every time performance data is processed for an object so there is not need to copy them. Please note that you won't be able view graphs as long as the xml-files aren't recreated!
+
+Updating PNP without changing the mode you should compare process_perfdata.cfg, config.php, and config_local.php (if present).
+
+
+**Note**   
+If you intend to update other monitoring related software please be sure to consult the change logs to see if there were changes affecting object names, performance data Output, and such things. Compare object definition files for differences.

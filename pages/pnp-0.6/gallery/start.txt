@@ -1,0 +1,13 @@
+====== PNP 0.6.x Screenshots ======
+
+Screenshot based on 08-05-2009 showing service details based on theme "smoothness" 
+
+{{:pnp-0.6:gallery:pnp-preview-05-08-2009.png?150|Theme "smoothness"}}
+
+Theme "smoothness" again, with 2 items added to your personal basket.
+
+{{:pnp-0.6:gallery:pnp-basket.png?150|2 items added to the Basket}}
+
+View your personal basket.
+
+{{:pnp-0.6:gallery:pnp-basket-view.png?150|View your personal Basket}}

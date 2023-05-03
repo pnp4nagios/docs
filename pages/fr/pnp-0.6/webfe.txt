@@ -1,0 +1,93 @@
+====== Interface web de Nagios ======
+
+Est-il préférable que PNP soit facilement accessible? Vous n'avez certainement pas envie de chercher longtemps le bon graphique.
+
+Nagios propose des fonctionnalités permettant d'accéder à des URL externes. En raison de changements entre les versions de nagios 2.x et 3.x, nous décrirons la configuration pour ces deux versions.
+
+===== Nagios 2.x =====
+
+Avec Nagios 2.x, l'intégration d'URL externe dans l'interface web de nagios se fait en renseignant les informations étendues des [[http://nagios.sourceforge.net/docs/2_0/xodtemplate.html#serviceextinfo|services]]. Pour PNP, nous utilisons la directive action_url pour appeler l'interface web de PNP web frontend avec les options ad hoc :.
+
+<code>
+define serviceextinfo {
+   host_name             localhost
+   service_description   load
+   action_url            /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$
+}
+</code>
+
+Vous devrez spécifier ces informations étendues de services pour chaque définition de service.
+
+===== Nagios 3.x =====
+
+Depuis nagios 3.0 la directive action_url a été déplacée dans la définition des [[http://nagios.sourceforge.net/docs/3_0/objectdefinitions.html#host|machines]] ou des [[http://nagios.sourceforge.net/docs/3_0/objectdefinitions.html#service|services]]. De cette façon, la définition de l'accès aux URLs de PNP est plus simple. Les définitions [[http://nagios.sourceforge.net/docs/3_0/objectdefinitions.html#serviceextinfo|serviceextinfo]] et [[http://nagios.sourceforge.net/docs/3_0/objectdefinitions.html#hostextinfo|hostextinfo]] sont maintenant dépréciées. 
+
+Nous allons d'abord définir 2 templates. Si vous avez utilisé  [[http://nagios.sourceforge.net/docs/3_0/quickstart.html|le guide d'installation rapide de Nagios]] vous pouvez ajouter ces lignes directement au fichier templates.cfg:
+
+<code>
+define host {
+   name       host-pnp
+   action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=_HOST_
+   register   0
+}
+
+define service {
+   name       srv-pnp
+   action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$
+   register   0
+}
+</code>
+
+Ces 2 templates peuvent maintenant être utilisées en incluant "use srv-pnp" ou "use host-pnp" pour les services et les hosts respectivement. Si vous avez utilisé le guide d'installation rapide de Nagios vous pouvez par exemple éditer votre fichier de config localhost.cfg et ajouter les nouvelles templates définies à votre host ou vos services comme ceci:
+
+<code>define host{
+        use                     linux-server,host-pnp    ; Name of host templates to use
+                                                         ; This host definition will inherit all variables that are defined
+                                                         ; in (or inherited by) the linux-server host template definition.
+        host_name               localhost
+        alias                   localhost
+        address                 127.0.0.1
+        }
+</code>
+
+<code>define service{
+        use                     local-service,srv-pnp   ; Name of service template to use
+        host_name               localhost
+        service_description     PING
+        check_command           check_ping!100.0,20%!500.0,60%
+        }
+</code>
+ 
+ 
+Les liens correct vers PNP4NAGIOSThe vont se générer automatiquement.\\ \\ 
+
+**Astuce**: Si vous voulez ouvrir la fenêtre de PNP4NAGIOS dans votre fenêtre //principale// (a droite du menu) au lieu d'une nouvelle page, modifiez juste ''action_url_target=main'' dans votre nagios cgi.cfg
+
+
+
+===== Popups =====
+Vous pouvez également intégrer PNP dans Nagios de façon à ce que vous n'ayez à cliquer sur aucuns icones. Cela peut être configuré en utilisant [[http://nagios.sourceforge.net/docs/3_0/cgiincludes.html|CGI Includes]] qui nous autorise a utiliser du code JavaScript dans la vue de détail ( status.cgi ). 
+
+Prérequis:
+   * PNP doit être installé et fonctionnel
+   * Le fichier status-header.ssi du dossier contrib/ssi/ du packet PNP a été copié dans /usr/local/nagios/share/ssi/.\\ **Attention**: Ce fichier NE DOIT **PAS** être exécutable. Si non il sera traité comme un script CGI ce qui génèrera une erreur.\\ *Note pour les administrateurs Apache*: Apache ssi et Nagios ssi n'ont de commun que le nom.
+   * La/les définition(s) du/des service(s) a/on été modifié. A noter que jusqu'à Nagios 2.x vous devez modifier la définition serviceextinfo (qui est rendue obsolète à partir de la version 3 de Nagios).
+   
+Définition:
+<code>
+define host {
+   name       host-pnp
+   action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=_HOST_' class='tips' rel='/pnp4nagios/index.php/popup?host=$HOSTNAME$&srv=_HOST_
+   register   0
+}
+
+define service {
+   name       srv-pnp
+   action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$' class='tips' rel='/pnp4nagios/index.php/popup?host=$HOSTNAME$&srv=$SERVICEDESC$
+   register   0
+}
+</code>	
+Après le redémarrage de Nagios (après modification des définitions) cela ressemble à ceci:\\ 
+{{:popup.png?200}}  
+
+[[start|Retour a l'index]] | [[webfe_cfg|config options]]

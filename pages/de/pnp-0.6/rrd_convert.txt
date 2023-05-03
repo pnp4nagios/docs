@@ -1,0 +1,40 @@
+====== RRD_STORAGE_TYPE = MULTIPLE ======
+
+**Verfügbar ab PNP 0.6.3**
+
+Mit PNP-Version 0.6 ist es möglich, die Performance-Daten nicht in einer einzelnen RRD-Datenbank (SINGLE), sondern in mehreren RRD Datenbanken (MULTIPLE) zu speichern.
+
+Nach dem Anlegen eines RRD-Files ist es nicht mehr möglich, dieses um eine Datasource (DS) zu erweitern. Daraus ergeben sich Probleme für Nagios-Plugins, die im Laufe der Zeit die Anzahl der Datenreihen dynamisch ändern.
+
+Ein Beispiel wäre check_disk, wenn man pauschal alle verfügbaren Filesysteme in einem Service überwacht. Kommt ein Filesystem hinzu, so kann die RRD-Datenbank nicht mehr aktualisiert werden. Die Struktur der neuen Daten passt einfach nicht mehr zur RRD-Struktur.
+
+PNP arbeitet per Default mit der Option ''RRD_STORAGE_TYPE = SINGLE'', welche in der process_perfdata.cfg definiert ist. 
+
+Diese Einstellung sollte **nicht** global verändert werden, da PNP nach der Umstellung auf MULTIPLE sofort beginnt, neue RRD-Files anzulegen. Alte Daten gehen damit sofort verloren!
+
+Weiterhin ist es im Hinblick auf die Performance nicht sinnvoll, global mit ''RRD_STORAGE_TYPE = MULTIPLE'' zu arbeiten. Die Anzahl der RRD-Datenbanken und somit auch der Disk-I/O während der Updates vervielfacht sich. Entsprechend sollte man mit Bedacht wählen, welche Nagios-Check-Commands mit welcher Einstellung behandelt werden sollen.
+
+Im Abschnitt [[tpl_custom|Custom Templates]] ist beschrieben, wie die Einstellungen vorgenommen werden können.    
+
+===== Ein Konverter =====
+
+Das Script ''libexec/rrd_convert.pl'' dient zum Umschalten des RRD_STORAGE_TYPE auf MULTIPLE und zum gleichzeitigen migrieren der RRD-Datenbanken.
+
+Maßgeblich ist dabei wie immer bei PNP das Nagios-Check-Command.
+
+<code>rrd_convert.pl --check_command=<nagios_check_command> | --list_commands [ --dry-run ] [ --tmp_dir=<temp-dir> ]
+[[ --no_structure_check ]]</code>
+
+Das Script erwartet über die Option ''--check-command='' das Check-Command, nach dem gesucht werden soll.
+
+''rrd_convert.pl'' wird nun alle PNP-XML-Dateien nach diesem Command durchsuchen und eine Statistik  ausgeben.
+
+Nach Bestätigung durch den User beginnt das Konvertieren der einzelnen RRD-Datenbanken, wobei der aktuelle Ablauf angezeigt wird. Das Script endet, wenn Sie <ENTER> drücken, also geben Sie bitte einen Buchstaben ein.
+
+Die Option ''--dry-run'' sorgt dafür, dass die RRD-Datenbanken zwar konvertiert, jedoch in ''/tmp/rrd_convert'' in separaten Verzeichnissen je Host gespeichert werden. So kann man sich einen Überblick über die zu erwartende Laufzeit und das Datenvolumen verschaffen.
+
+Wenn Sie das temporäre Verzeichnis ändern möchten, dann können Sie das mit Hilfe der Option ''--tmp_dir=<alternatives TMP-Directory>'' tun.
+
+Ab und zu passt die Anzahl der Datasources in den RRD-Dateien nicht zu der Anzahl in den XML-Dateien. Das passiert z.B. dann, wenn Plugins plötzlich eine andere Zahl von Datenreihen liefern (siehe oben check_disk). Mit der Option ''--no_structure_check'' werden auch diese RRD-Dateien konvertiert. 
+
+[[start|back to contents]] | [[npcd|NPCD-Details]]

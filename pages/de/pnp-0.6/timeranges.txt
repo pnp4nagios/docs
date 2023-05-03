@@ -1,0 +1,40 @@
+====== Timeranges ======
+
+In der Übersicht zeigt PNP fünf Zeitbereiche, die frei in der config.php definiert werden können.
+
+Es gibt aber auch die Möglichkeit, die Zeitbereiche über die URL zu beeinflussen. Dies ist hilfreich, wenn z.B. automatisch PDF-Dokumente erstellt werden sollen
+
+Die Zeitbereiche werden über die Optionen ''start'' und ''end'' definiert.
+
+Beispiel:
+
+   pnp4nagios/graph?host=<hostname>&srv=<servicedesc>&start=-1week
+
+   pnp4nagios/graph?host=<hostname>&srv=<servicedesc>&start=2011102322:50:00&end=2011102409:50:00
+
+Der Startzeitpunkt der Graphen wird somit, ausgehend vom aktuellen Datum, um eine Woche nach hinten verschoben. Der Endzeitpunkt bleibt auf dem aktuellen Zeitstempel. Aber auch ''end'' lässt sich über diesen Weg beeinflussen, wobei beide Optionen auch einzeln manipuliert werden dürfen.
+
+
+^ start ^ end ^ view ^ Ergebnis ^
+|       |     |     |Alle Ansichten enden mit der aktuellen Zeit |
+|  x    |     |     |Alle Ansichten beginnen mit dem angegebenen Datum |
+|       |  x  |     |Alle Ansichten enden mit dem angegebenen Datum |
+|  x    |  x  |     |Eine Ansicht zwischen den beiden Zeitangaben |
+|       |     |  x  |Eine Ansicht endet mit der aktuellen Zeit |
+|  x    |     |  x  |Eine Ansicht beginnt mit dem angegebenen Datum |
+|       |  x  |  x  |Eine Ansicht endet mit dem angegebenen Datum |
+
+Beispiele zur Datumsangabe:
+
+^  Format   ^ Beschreibung      ^ 
+| 2009W04   | 4. KW 2009 |
+| 1.5.2009  | 1. Mai 2009 |
+| -1 day    | Einen Tag zurück |
+| -3 weeks  | 3 Wochen zurück  |
+| -1 year   | Ein Jahr zurück  |
+| yesterday | Gestern |
+| 2011102322:50:00 | 23.10.2011 ab 22:50:00 Uhr|
+
+
+
+[[start|zurück zur Übersicht]] | [[Pages]]

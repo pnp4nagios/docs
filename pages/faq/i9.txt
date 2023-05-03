@@ -1,0 +1,13 @@
+===== Apache mod_rewrite is not enabled =====
+
+If you got the error "//Apache Rewrite Module :    Apache mod_rewrite is not enabled//" on the first run of the PNP4Nagios webinterface or you see errors instead of graphs, just do the following:
+
+1. Run the followning:
+<code>
+a2enmod rewrite
+</code>
+
+2. Restart your apache server
+<code>
+/etc/init.d/apache2 restart
+</code>

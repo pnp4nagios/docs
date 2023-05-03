@@ -1,0 +1,10 @@
+===== xml-structure-mismatch =====
+
+PNP checks the format of the xml files created by ''process_perfdata.pl'' using a version number.
+
+This way it is ensured that the versions of the web frontend and process_perfdata.pl are compatible.
+The version number will only be increased due to basic changes.
+
+These errors are temporary after a change of the XML format. The files are recreated each time by process_perfdata.pl so the errors should disappear after a while (depending on the value of check_interval).
+
+If this error persists it should be checked if the version of ''process_perfdata.pl'' matches the version of the web frontend.

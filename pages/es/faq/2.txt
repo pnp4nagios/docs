@@ -1,0 +1,9 @@
+===== config-not-found =====
+
+PNP requiere un fichero de configuración para los valores del frontal web.
+
+La ruta se estableció durante la instalación vía ./configure y los parámetros pasados.
+
+La ruta se muestra en el mensaje de error.
+
+El fichero debe tener permisos de lectura para el servidor web Apache.

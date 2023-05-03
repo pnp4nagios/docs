@@ -1,0 +1,47 @@
+====== Advanced ======
+
+
+
+===== Verteilte Systeme =====
+Ist Nagios als verteiltes System implementiert, stellt sich die Frage, wo PNP installiert wird.
+
+Rein technisch ist diese Frage nicht wichtig. PNP kann auf den Slaves sowie auf dem Master Server installiert sein. Oder nur auf dem Master? 
+
+Wird PNP auf dem Master betrieben, ist jedoch bei der Übergabe der Daten via send_nsca von den Slave Servern zum Master darauf zu achten, dass auch die Performance-Daten übergeben werden. Weiterhin kommt auf dem Master oft nicht das Original-Check-Command zum Einsatz. 
+
+Damit nun aber PNP auf dem Master noch erkennen kann, welches Check-Command auf den Slaves die Daten ermittelt hat, reagiert process_perfdata.pl auf ein zusätzliches Feld am Ende der Performance Daten.
+
+<code>OK - 127.0.0.1: rta 2.687ms, lost 0% | rta=2.687ms;3000.000;5000.000;0; pl=0%;80;100;; [check_icmp]</code>    
+
+Findet PNP am Ende der Performance Daten einen in eckigen Klammern eingeschlossenen Text, so wird dieser als Check-Command und somit als PNP-Template verwendet.
+
+Die Nagios-Dokumentation zu diesem Thema ist [[http://nagios.sourceforge.net/docs/3_0/distributed.html|hier]] zu finden. Das in der Doku verwendete Command ist leicht anzupassen.
+
+Aus 
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$'
+	}
+</code>
+
+wird
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$ | $SERVICEPERFDATA$ [$SERVICECHECKCOMMAND$]'
+	}
+</code>
+
+
+===== Das check_multi Plugin=====
+
+Das Plugin [[http://my-plugin.de/wiki/projects/check_multi/start|check_multi]] ist eines der ersten Plugins, das die Funktionen von Nagios 3.0 richtig ausschöpft. Check_Multi ist in der Lage, mehrere Nagios Plugins auszuführen, aber für Nagios als einen Service darzustellen. Die Ausgabe von check_multi erfolgt über mehrere Zeilen, um die Masse an Informationen wieder darstellen zu können.
+
+Daraus ergaben sich jedoch einige Schwierigkeiten für PNP. PNP muss aus den Performance-Daten wieder die Daten der einzelnen Plugins ermitteln können. Zusammen mit Matthias Flacke, dem Entwickler von check_multi, haben wir jedoch recht schnell eine Möglichkeit gefunden, die Daten wieder sauber den einzelnen Plugins zuzuordnen.
+
+{{http://my-plugin.de/wiki/_media/check_multi/performance/multi_labels.png?300}}
+
+[[start|Zurück zur Doku]]

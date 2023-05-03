@@ -1,0 +1,19 @@
+===== mod_rewrite =====
+
+The Apache module mod_rewrite is not enabled.
+
+===== The Debian way =====
+
+   a2enmod rewrite
+   /etc/init.d/apache2 restart
+
+
+===== The Suse way =====
+
+   # open the following file:
+   vi /etc/sysconfig/apache2
+   # and add the entry:
+   APACHE_MODULES="[...] rewrite [...]"
+   # restart your apache
+   /etc/init.d/apache2 restart
+

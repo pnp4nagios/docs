@@ -1,0 +1,42 @@
+===== Système distribué =====
+Si votre surveillance Nagios est distribuée, vous devrez décider de l'emplacement où vous aller installer PNP.
+
+D'un point de vue technique, cette question n'a pas d'importance. PNP peut-être installé sur un(des) esclave(s) aussi bien que sur le maître et éventuellement sur les deux.
+
+Si PNP tourne sur le serveur maître, vous devrez vous assurer que les données envoyées par send_nsca depuis les esclaves contiennent bien les données de performance. Généralement, ces envoies de données sont fait à l'aide d'un autre moyen.
+
+Pour aider PNP à reconnaître les commandes lancées par l'esclave sur le maître, vous pouvez préciser le nom de la commande à la fin des données de performances de la manière suivante :
+
+<code>OK - 127.0.0.1: rta 2.687ms, lost 0% | rta=2.687ms;3000.000;5000.000;0; pl=0%;80;100;; [check_icmp]</code>    
+
+Si PNP trouve une chaîne entouré de crochet à la fin des données de perforamnces, elle sera reconnue comme la commande de test et sera utilisé pour le template PNP. 
+
+De la documentation Nagios sur le sujet peut-être consulté
+[[http://nagios.sourceforge.net/docs/3_0/distributed.html|ici]]. La commande dans la documentation peut-être adaptée facilement.
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$'
+	}
+</code>
+
+should be changed to
+
+<code>
+define command{
+	command_name	submit_check_result
+	command_line	/usr/local/nagios/libexec/eventhandlers/submit_check_result $HOSTNAME$ '$SERVICEDESC$' $SERVICESTATE$ '$SERVICEOUTPUT$ | $SERVICEPERFDATA$ [$SERVICECHECKCOMMAND$]'
+	}
+</code>
+
+
+===== check_multi plugin=====
+
+Le Plugin [[http://my-plugin.de/wiki/projects/check_multi/start|check_multi]] est l'un des premiers plugins à utiliser cette nouvelle fonctionnalité de Nagios 3.x. Check_multi peut exécuter plusieurs tests en même temps mais en retournant le tout sous la forme d'un seul service. La sortie de check_multi comprend plusieurs lignes pour être en mesure d'afficher l'information.
+
+Ceci se traduit par des difficultés pour PNP qui doit alors extraire son information de plusieurs sondes depuis la sortie de performance. Avec l'aide de Matthias Flacke, créateur de check_multi, nous avons trouvé une solution pour appliquer les données aux bonnes sondes.
+
+{{http://my-plugin.de/wiki/_media/check_multi/performance/multi_labels.png?300}}
+
+[[start|back to contents]] | [[rrdcached|support of rrdcached]]

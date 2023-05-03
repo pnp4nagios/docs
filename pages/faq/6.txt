@@ -1,0 +1,10 @@
+===== xml-not-found =====
+
+PNP was called with a host and a service in the URL
+
+Example:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>&srv=<this-service>
+
+The name of the XML file contains ''host'' and ''srv''. The path is shown in the error message.
+
+This xml file cannot be found be the web server or is not readable.

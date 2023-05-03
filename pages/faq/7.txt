@@ -1,0 +1,10 @@
+===== get-first-service =====
+
+PNP was called with a host in the URL but without a service.
+
+Exmaple:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+PNP tries to get the first service in the specified perfdata directory.
+
+Maybe the directory ''var/perfdata/<this-host>/'' is empty.

@@ -1,0 +1,14 @@
+==== host-perfdata-dir-empty =====
+
+Se ha llamado a PNP usando un equipo en la URL.
+
+Ejemplo:
+   http://<nagios-server>/pnp4nagios/graph?host=<this-host>
+
+La ruta al directorio de perfdata es válida pero no ha sido posible recuperar ningún dato.
+
+La ruta se muestra en el mensaje de error.
+
+La causa puede deberse a muchas razones.
+
+Normalmente PNP no crea ningún directorio sin haber colocado ningún dato. Puede que el directorio se haya creado manualmente con permisos incorrectos, por lo que PNP no tiene permisos de escritura.

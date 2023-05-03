@@ -1,0 +1,128 @@
+====== Installation ======
+
+Im Folgenden wird die Installation von PNP beschrieben. Dabei wird davon ausgegangen, dass Nagios aus den Sourcen übersetzt und im Verzeichnis /usr/local/nagios installiert wurde.\\ 
+**Achtung:** Die Beschreibung bezieht sich auf die Developer-Version PNP 0.6.0.\\ 
+Bitte vergessen Sie nicht, dass PNP nach der Installation noch konfiguriert werden muss.
+
+===== Make und Co =====
+
+Die Installation von PNP wird wie bei Nagios auch über [[wpde>Makefile]]s gesteuert. Dabei wird durch den Aufruf von ./configure das System analysiert und die ermittelten Werte in Makefiles übernommen.
+
+Als User root wird PNP in /usr/local/src entpackt.
+<code>
+tar -xvzf pnp4nagios-HEAD.tar.gz
+cd pnp4nagios
+</code>
+
+Im Verzeichnis pnp4nagios wird nun ./configure aufgerufen.
+
+<code>
+./configure
+</code>
+**Hinweis:** Ohne weitere Optionen werden als Benutzer und Gruppe "nagios" verwendet. Bei abweichenden Werten sind die Parameter "--with-nagios-user" und "--with-nagios-group" zu benutzen. Im Falle von Icinga könnte der Aufruf so aussehen
+<code>
+./configure --with-nagios-user=icinga --with-nagios-group=icinga
+</code>
+
+Es laufen einige Zeilen über den Bildschirm. Wichtig ist die Ausgabe zum Schluss.
+
+<code>
+*** Configuration summary for pnp4nagios-0.6.2 23-12-2009 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/pnp4nagios
+  HTML Dir:                         /usr/local/pnp4nagios/share
+  Config Dir:                       /usr/local/pnp4nagios/etc
+  Location of rrdtool binary:       /usr/bin/rrdtool Version 1.2.12
+  RRDs Perl Modules:                FOUND (Version 1.2012)
+  RRD Files stored in:              /usr/local/pnp4nagios/var/perfdata
+  process_perfdata.pl Logfile:      /usr/local/pnp4nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/pnp4nagios/var/spool
+
+  Web Interface Options:  -------------------------         -------------------
+  HTML URL:                         http://localhost/pnp4nagios/
+  Apache Config File:               /etc/apache2/conf.d/pnp4nagios.conf
+
+
+  Review the options above for accuracy.  If they look okay,
+  type 'make all' to compile.</code>
+
+Die angezeigten Pfade sollten nun geprüft werden. Falls die gezeigten Werte nicht passen, kann durch einen erneuten Aufruf von ./configure mit den passenden Optionen Abhilfe geschaffen werden.\\ 
+**ACHTUNG:** Nachdem es immer wieder Schwierigkeiten gibt: "Location of rrdtool binary" bedeutet inkl. Namen des Binary! Bei Bedarf kann man das beim ./configure als Parameter angeben:
+
+   ./configure --with-rrdtool=/usr/local/rrdtool-1.2.xx/bin/rrdtool
+
+   ./configure --help 
+
+zeigt, welche Optionen möglich sind.\\ \\ 
+Ein
+
+<code>make all</code>
+
+kompiliert nun die in C geschriebenen Komponenten wie NPCD
+
+<code>make install</code>
+
+kopiert alles an die richtige Stelle im Filesystem. Die Pfade wurden ja beim ./configure bereits gezeigt.
+
+Nach der Installation der Programm- und HTML-Dateien wird mit 
+
+<code>make install-webconf</code>
+
+eine Konfigurationsdatei in das Konfigurationsverzeichnis des Apache-Web-Servers kopiert.
+
+Optional kann noch
+
+<code>make install-config</code>
+
+aufgerufen werden. Damit werden Config-Files für process_perfdata.pl und npcd nach etc/pnp kopiert. 
+
+Wird das INIT Script für den NPCD benötigt, so sorgt
+
+<code>make install-init</code>
+
+für die Installation nach /etc/init.d 
+
+Zusammenfassen lassen sich diese einzelnen Commands durch
+
+<code>make fullinstall</code>
+
+**Hinweis:** Wie oben schon beschrieben wird standardmässig mit den Nagios-Einstellungen installiert. Wird Icinga genutzt, muss in der Datei "/etc/apache2/conf.d/pnp4nagios.conf" der Pfad zum AuthUserFile angepasst werden (Pfad evtl. je nach Distri anpassen):
+
+<code>
+#       AuthUserFile /usr/local/nagios/etc/htpasswd.users
+        AuthUserFile /usr/local/icinga/etc/htpasswd.users
+</code>
+
+**Achtung:** Nach dem Kopieren der Konfigurationsdatei für den Web-Server bzw. Ändern des AuthUserFile ist ein Restart des Web-Servers notwendig (''service httpd restart'' bzw. ''/etc/init.d/apache2 restart'').
+
+===== Update =====
+
+Das Update einer 0.6.x-Version funktioniert (fast) genauso wie die Installation. Bitte beachten Sie, dass Sie beim "./configure" die gleichen Optionen wie bei der Erstinstallation benutzen!
+Bitte prüfen Sie außerdem, ob Sie Änderungen im Verzeichnis ''share/templates.dist'' vorgenommen haben. Eigene Templates sollten im Ordner ''share/templates'' abgelegt werden.\\ 
+**Achtung**:  Wenn Sie in der Datei config.php Änderungen vorgenommen haben, sollten Sie diese Datei sichern, bevor sie bei einem "make install-config" überschrieben wird.
+
+Sie können die Schritte ''make install-webconf'' und ''make install-init'' überspringen, denn zwischen den 0.6.x-Versionen gab es an dieser Stelle keine Änderungen.
+
+===== Die Komponenten =====
+
+Nach der Installation sind einige Komponenten von PNP an die passenden Stellen im Dateisystem kopiert worden.
+
+Im Folgenden sind dies die PHP-Files für das Web-Frontend unter 
+
+   /usr/local/pnp4nagios/share
+
+Der Datensammler process_perfdata.pl in 
+
+   /usr/local/pnp4nagios/libexec
+
+Beispiel-Config-Files mit der Dateierweiterung ''-sample'' in
+
+   /usr/local/pnp4nagios/etc
+
+Die Config-Datei config.php für das Web-Frontend in 
+
+   /usr/local/pnp4nagios/etc
+[[start|Zurück zur Übersicht]] | [[config|Konfiguration]]

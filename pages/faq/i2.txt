@@ -1,0 +1,63 @@
+====== PCRE Unicode Support ======
+
+
+PCRE has not been compiled with Unicode property support.
+
+http://www.php.net/pcre
+
+====== Solution for Red Hat Enterprise Linux Server release 5.4 (Tikanga) ======
+
+The simplest solution is to rebuild the RPM
+
+<code>
+pcretest -C
+PCRE version 6.6 06-Feb-2006
+Compiled with
+  UTF-8 support
+  No Unicode properties support
+  Newline character is LF
+  Internal link size = 2
+  POSIX malloc threshold = 10
+  Default match limit = 10000000
+  Default recursion depth limit = 10000000
+  Match recursion uses stack
+</code>
+
+A source RPM should be available at [[ftp://ftp.redhat.com/pub/redhat/linux/enterprise/5Server/en/os/SRPMS/]]
+
+<code>
+rpm -ivh pcre-6.6-2.el5_1.7.src.rpm
+</code>
+
+Just change:
+
+''%configure --enable-utf8'' 
+
+''%configure --enable-utf8 --enable-unicode-properties''
+
+<code>
+/usr/src/redhat/SPECS/pcre.spec
+</code>
+
+Now rebuild, install and restart Apache
+
+<code>
+rpmbuild -ba /usr/src/redhat/SPECS/pcre.spec
+rpm -Uvh /usr/src/redhat/RPMS/i386/pcre-6.6-2.7.XX.rpm
+</code>
+
+<code>
+PCRE version 6.6 06-Feb-2006
+Compiled with
+  UTF-8 support
+  Unicode properties support
+  Newline character is LF
+  Internal link size = 2
+  POSIX malloc threshold = 10
+  Default match limit = 10000000
+  Default recursion depth limit = 10000000
+  Match recursion uses stack
+</code>
+
+
+

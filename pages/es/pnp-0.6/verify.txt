@@ -1,0 +1,39 @@
+====== Comprobando la instalación ======
+
+Si todo ha ido bien hasta ahora, está listo para llamar a PNP desde su navegador.
+Cuando se realiza la instalación con los valores por defecto, PNP debería ser invocado usando [[http://<server name>/pnp4nagios/]].
+
+Cuando se le invoca sin argumentos, PNP busca los ficheros RRD y XML en var/perfdata y muestra todos los gráficos del primer equipo.
+
+ATENCIÓN: Inmediatamente después de (re-)iniciar Nagios, después de haber habilitado el procesado de los datos de rendimiento obtendrá un error en su navegador, debido a que los datos han de ser recolectados y almacenados en ficheros RRD. En función del intervalo de chequeo que esté usando, tendrá que esperar algún tiempo antes de que pueda visualizar los gráficos.
+===== Log de Debug =====
+
+Invocando ''make install-config'' durante la instalación crea un fichero ejemplo de configuración ''etc/process_perfdata.cfg-sample''. Los valores de este fichero de ejemplo corresponden a los valores por defecto usados por ''process_perfdata.pl'' por lo que normalmente no debería tener un fichero llamado ''process_perfdata.cfg'' mientras ejecuta el procedimiento.\\ 
+En cualquier caso, puede modificar la forma en la que ''process_perfdata.pl'' trabaja, cambiando las opciones que se especifican en ''process_perfdata.**cfg**''. 
+
+Las opciones más importantes al lanzar PNP son LOG_LEVEL y LOG_FILE. Recomendamos establecer los valores para ''LOG_LEVEL'' a un valor de "2" de tal forma que pueda realizar un seguimiento de lo que hace process_perfdata.pl.
+Normalmente le preguntaremos sobre las excepciones encontradas en perfdata.log si abre una if you open a [[about#support|petición de soporte]] en las listas de correo, así como la salida del script [[verify_pnp_config]], por lo que debería proporcionárnoslo ;-).
+
+En un funcionamiento normal, el nivel de debug debería establecerse a 0 para evitar incidencias en el rendimiento debido a un exceso de entradas innecesarias en el fichero de log.
+===== Algo ha ido mal =====
+
+Algunas configuraciones básicas deben ser comprobadas
+
+1. ¿Se han creado ficheros RRD y XML?
+''process_perfdata.pl'' crea un nuevo directorio en pnp/perfdata por cada equipo. En este directorio una base de datos RRD y un fichero XML se crean por cada servicio. Los datos del equipo se almacenan en ''_HOST_.xml'' y ''_HOST_.rrd'' respectivamente.\\ 
+A veces se tienen que especificar opciones de información adicional para que los datos de rendimiento se produzcan. En algunos casos un [[wrapper|wrapper script]] puede ayudar.\\ 
+De cualquier forma, no todos los chequeos facilitan datos de rendimiento. Esto aplica - entre otros - a "check_ping" en contraste con "check_icmp" que sí que los provee, (a partir de la versión de plugins de Nagios 1.4.12 check_ping ya facilita esa información).\\ 
+Al usar el interfaz web, la información detallada de equipos/servicios muestra un campo "Performance Data". Si está vacío, no hay datos disponibles, por lo que no se escribirá ningún fichero en los directorios apropiados y ¡es por esto que PNP no le facilitará ningún tipo de gráfico!\\ 
+La siguiente imagen muestra la información de un servicio "PING". La salida del plugin está remarcada en azul, los datos de rendimiento en rojo.\\ 
+{{:srv_info.png?350|status information}}
+
+2. ¿Se ha invocado desde Nagios a ''process_perfdata.pl''?
+En el fichero de configuración de process_perfdata.pl (''etc/process_perfdata.**cfg**'') se puede incrementar el nivel de debug. El procesado de los datos será registrado en ''var/perfdata.log''.
+
+3. ¿Se muestran los gráficos sin texto alguno?
+Eche un vistazo a [[about#system_requirements|requerimientos]].
+
+4. Puede usar el script [[verify_pnp_config|verify_pnp_config.pl]] en el directorio ''contrib'' de la carpeta de instalación, o en  ''libexec'' después de la instalación, para comprobar su configuracióny si los datos de rendimiento están presentes y/o son válidos. La sintaxis  es muy simple:
+<code>./verify_pnp_config.pl -m <mode></code> donde ''<mode>'' puede ser "default", "bulk" o "npcd" (sin las comillas).
+
+[[start|volver a contenidos]] | [[verify_pnp_config|verify_pnp_config.pl]]

@@ -1,0 +1,9 @@
+====== config-not-found ======
+
+PNP requires a config file for the settings of the web frontend.
+
+The path is shown in the error message.
+
+The path has been set during installation via ./configure and the passed parameters.
+
+The file has to be readable by the Apache web-server.

@@ -1,0 +1,19 @@
+===== mod_rewrite =====
+
+Das Apache-Modul mod_rewrite ist nicht aktiviert
+
+===== Debian =====
+
+   a2enmod rewrite
+   /etc/init.d/apache2 restart
+
+
+===== SuSE =====
+
+   # editieren der folgenden Datei
+   vi /etc/sysconfig/apache2
+   # in der Zeile das Modul hinzufügen
+   APACHE_MODULES="[...] rewrite [...]"
+   # Apache neustarten
+   /etc/init.d/apache2 restart
+

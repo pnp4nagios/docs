@@ -1,0 +1,4 @@
+===== auth-pages =====
+
+You are not authorized to view "pages"
+

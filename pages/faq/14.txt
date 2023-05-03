@@ -1,0 +1,4 @@
+===== no-data-for-page =====
+
+No data could be detected for the page config used.
+The specified host name / service description has to match the file name in the perfdata directory, not the settings in the host/service definition!

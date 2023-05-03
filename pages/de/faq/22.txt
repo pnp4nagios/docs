@@ -1,0 +1,9 @@
+===== no-templates-found =====
+
+PNP war nicht in der Lage ein passendes Template zu finden.
+
+Dieser Fehler darf unter normalen Umständen nie auftreten, da das Template ''default.php'' immer in letzter Instanz verwendet wird.
+
+Diese Meldung deutet darauf hin, dass selbst das Template ''default.php'' nicht zur Verfügung steht.
+
+Prüfen Sie die Verzeichnisse, die in ''pnp4nagios/etc/config.php'' unter ''$conf['template_dirs']'' definiert wurden.

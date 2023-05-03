@@ -1,0 +1,78 @@
+====== Instalación ======
+La instalación de PNP se describe aquí en más detalle. Se espera que nagios esté compilado desde las fuentes y se localice en /usr/local/nagios.\\ 
+**Atención:** La descripción aplica a la versión de desarrollo de PNP 0.6.0.\\ 
+Tenga en cuenta que PNP debe ser configurado después de la instalación.
+
+===== Make y más =====
+La instalación de PNP se controla mediante[[wp>makefile]]s. el sistema se analiza después de la invocación de ./configure y los valores detectados se transfieren a los makefiles.
+
+Descomprima PNP como usuario root:
+<code>
+tar -xvzf pnp4nagios-HEAD.tar.gz
+cd pnp4nagios
+</code>
+
+./configure debe ser llamado desde el directorio pnp4nagios.
+
+<code>
+./configure
+</code>
+
+Se ven algunas líneas correr por la pantalla. La salida al final es importante.
+
+<code>
+*** Configuration summary for pnp4nagios-0.6.0 07-30-2009 ***
+
+  General Options:
+  -------------------------         -------------------
+  Nagios user/group:                nagios nagios
+  Install directory:                /usr/local/pnp4nagios
+  HTML Dir:                         /usr/local/pnp4nagios/share
+  Config Dir:                       /usr/local/pnp4nagios/etc
+  Location of rrdtool binary:       /usr/bin/rrdtool Version 1.2.12
+  RRDs Perl Modules:                FOUND (Version 1.2012)
+  RRD Files stored in:              /usr/local/pnp4nagios/var/perfdata
+  process_perfdata.pl Logfile:      /usr/local/pnp4nagios/var/perfdata.log
+  Perfdata files (NPCD) stored in:  /usr/local/pnp4nagios/var/spool
+
+  Web Interface Options:  -------------------------         -------------------
+  HTML URL:                         http://localhost/pnp4nagios/
+  Apache Config File:               /etc/apache2/conf.d/pnp4nagios.conf
+
+
+  Review the options above for accuracy.  If they look okay,
+  type 'make all' to compile.</code>
+
+Las rutas mostradas deben ser comprobadas. Si los valores mostrados no son los correctos, debería cambiarlos, ejecutando ./configure con los valores apropiados.\\ 
+**Atención:** "Location of rrdtool binary" ¡quiere decir que la ruta debe incluir el nombre del binario! Si fuera necesario, se puede especificar usando la siguiente sintaxis:
+
+   ./configure --with-rrdtool=/usr/local/rrdtool-1.2.xx/bin/rrdtool
+
+   ./configure --help 
+
+muestra las opciones soportadas.\\ \\ 
+
+Invocando
+   make all
+
+se compilan los componentes como NPCD que están escritos en C
+
+   make install
+
+copia todos los elementos a sus lugares correspondientes en el sistema de ficheros. Las rutas se han mostrado previamente durante la etapa de ./configure.
+
+Se puede ejecutar
+
+   make install-config
+
+opcionalmente. De esta forma los ficheros de configuración para process_perfdata.pl y npcd se copian a etc/pnp.
+
+Para instalar el init script de NPCD se debe ejecutar
+
+   make install-init
+
+Todos estos pasos están combinados en
+
+   make fullinstall
+
+[[start|volver a contenidos]] | [[config|configuración]]

@@ -1,0 +1,26 @@
+===== A converter =====
+
+Le script ''libexec/rrd_convert.pl'' peut-être utilisé pour passer du modèle ''RRD_STORAGE_TYPE'' à celui de ''MULTIPLE'' et permettre la migration des bases de données RRD.
+
+Avec PNP, nous utilisons toujours les commandes "check command" de Nagios.
+
+<code>rrd_convert.pl --check_command=<nagios_check_command> | --list_commands [ --dry-run ] [ --tmp_dir=<temp-directory ]
+[ --no_structure_check ]</code>
+
+Vous devez spécifier au moins une "--check_command" ou "--list_commands", suivant le cas.
+En utilisant ''--check-command=''  vous demandez quel est le script que vous voulez utiliser.
+
+''rrd_convert.pl'' va maintenant parcourir l'ensemble des fichiers PNP XML pour cette commande et sortir les statistiques associées. 
+
+Après la confirmation, par l'utilisateur, la conversion des bases de données va être effectuée avec l'affichage de son évolution. Si vous pressez <ENTER> comme réponse, le script s'arrêtera donc tapez une lettre.
+
+Si vous n'êtes pas sûr de vous, utilisez la commande ''--list_commands'' pour avoir une liste des "check commands" utilisés dans les fichiers XML.
+
+L'option ''--dry-run'' va convertir les bases de données RRD mais elles seront écrites dans le répertoire  /tmp/rrd_convert et dans des répertoires différents pour chaque "host". De cette façon, vous verrez le temps mis et la quantité de données correspondante.
+
+Si vous voulez changer le répertoire temporaire, vous pouvez utiliser la commande ''--tmp_dir=<alternative temp dir>''.
+
+Parfois, le nombre de sources de données dans les fichiers RRD ne correspond pas au nombre présent dans les fichiers XML. Cela peut se produire si un plugin retourne, soudainement, plus de sources de données (check_disk comme mentionné ci-dessus). En utilisant l'option ''--no_structure_check'' ces fichiers RRD seront bien convertis.
+
+ 
+[[start|Retour à l'index]] | [[npcd|Details de NPCD]]

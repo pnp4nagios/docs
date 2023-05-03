@@ -1,0 +1,27 @@
+2.6. Données de performance
+
+Les données de performance sont définies par Nagios par “toutes les information présentes après le | résultant de l’exécution du plugin” - Se référer à la documentation de Nagios pour capturer ces informations dans un fichier de log. Toutefois, il est de la responsabilité du programmeur du plugin, que les données de performance soient dans un format respectant le standard des "plugins Nagios". Ceci est le format attendu:
+
+'label'=value[UOM];[warn];[crit];[min];[max]
+
+Notes:
+
+    -      La liste libellé/valeur peut être séparée par un espace
+    -      Le libellé peut contenir n'importe quels caractères
+    -      Les apostrophes pour entourer le libellé sont facultatives. Mais elles sont requises si un espace, égal ou ' sont utilisés dans le libellé
+    -      Le nom de libellé est libre, mais idéalement les 19 premiers caractères sont uniques (dû a une limitation dans RRD). Faites attention à cette limitation quand NRPE renvoie des informations à Nagios
+    -      Pour écrire un apostrophe, utilisé deux apostrophes l'un après l'autre
+    -      warn, crit, min/ ou max/ peuvent être nuls (par exemple, si la limite n'est pas définie ou min et max ne sont pas applicables). Les points virgules ne sont pas obligatoires.
+    -      min et max ne sont pas requis si UOM=%
+    -      Les valeurs de UOM, min et max de type [-0-9.] doivent toutes être de même type
+    -      UOM, warn et crit doivent être de même type et de même format (voir Sélection 2.5).
+    -      UOM (unit of measurement "unité de mesure") est l'une des suivante:
+          *            Si aucune unité n'est spécifiée - un nombre (entier ou à virgule) de choses (ex, utilisateurs, processus, charge moyenne)
+          *            s - secondes (également disponible us, ms)
+          *            % - pourcentage
+          *            B - bytes (également disponible KB, MB, GB, TB?)
+          *            c - compteur continu (ex: nombre de bytes transmises par une interface)
+
+La conversion des données de performance de Nagios en graphique est à la charge d'un autre programme.
+
+Source: [[https://www.monitoring-plugins.org/doc/guidelines.html#AEN200]]

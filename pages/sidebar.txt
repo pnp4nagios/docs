@@ -1,0 +1,16 @@
+====== Menu ======
+
+  * [[:start|Home]]
+
+  * **PNP4Nagios 0.6.x**
+    * [[de:pnp-0.6:start|Docs deutsch]]
+    * [[pnp-0.6:start|Docs english]]
+    * [[es:pnp-0.6:start|Docs spanish]]    
+    * [[fr:pnp-0.6:start|Docs française]]    
+    * [[pnp-0.6:gallery:start|Screenshots]]
+    * [[templates:start|Template Exchange]]
+
+  * **PNP4Nagios 0.4.x**
+    * [[de:pnp-0.4:start|Docs deutsch]]
+    * [[pnp-0.4:start|Docs english]]
+

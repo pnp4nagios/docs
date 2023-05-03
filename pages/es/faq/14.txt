@@ -1,0 +1,4 @@
+===== no-data-for-page =====
+
+No se han detectado datos para la configuración de página usada.
+¡El nombre de equipo / servicio especificado tienen que coincidir con el nombre del fichero en el directorio de perfdata, no con los valores en la definición de equipo/servicio!

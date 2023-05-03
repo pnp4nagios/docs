@@ -1,0 +1,17 @@
+====== Widgets ======
+
+**Available starting with pnp4nagios-0.6.1**
+
+Two widgets allow to integrate own data into the PNP web frontend.
+
+  * share/application/views/widget_menu.php
+
+This widget will be included in the menu.
+
+  * share/application/views/widget_graph.php
+
+This widget will be included above the first graph.
+
+The widgets are available as sample files (.sample.php) after installation and can be used if needed.
+
+As an example you can use these widgets to include links to other information into the PNP web interface without changing the source code of PNP.
