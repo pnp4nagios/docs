@@ -1,6 +1,0 @@
-===== get-first-host =====
-
-Se ha llamado a PNP sin especificar un equipo.
-Mientras se buscaba en el directorio ''var/perfdata'' no se han encontrado equipos.
-
-Asegúrese de que está habilitada la opción de procesado de datos de rendimiento, y que sus equipos/servicios generan datos válidos. Ver [[:es:pnp-0.6:about#system_requirements|requerimientos de sistema]], [[:es:pnp-0-6:verify|verificación]] y [[:es:pnp-0.6:verify_pnp_config|script de verificación]] para más detalles.

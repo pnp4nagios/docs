@@ -1,9 +1,0 @@
-===== perfdata-dir-empty =====
-
-El directorio especificado está vacío, por lo que PNP no tiene datos para crear ningún gráfico.
-
-Posibles causas:
-
-   * process_perfdata.pl no fue nunca llamado para procesar datos.\\ Solución: Dependiendo del modo usado, compruebe la configuración. Ver [[es:pnp-0.6:verify]] y [[es:pnp-0.6:verify_pnp_config]] para más detalles.
-
-   * Los chequeos no retornan datos de rendimiento (válidos). No todos los plugins retornan datos de rendimiento(por ejemplo: check_procs).\\ Solución: En algunos casos tiene que especificar opciones adicionales para que se produzcan estos datos. En otros casos un [[es:pnp-0.6:wrapper]] script podría ayudar.

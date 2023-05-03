@@ -1,5 +1,0 @@
-====== Reflection Class ======
-
-La clase''reflection'' no se ha cargado o no está compilada.
-
-http://www.php.net/reflection

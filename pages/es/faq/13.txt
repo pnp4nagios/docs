@@ -1,5 +1,0 @@
-===== template-without-def =====
-
-La plantilla utilizada para este equipo/servicio no devuelve a PNP el array $def[].
-
-La ruta a la plnatilla se muestra en el mensaje de error.

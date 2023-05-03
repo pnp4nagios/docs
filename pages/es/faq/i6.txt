@@ -1,5 +1,0 @@
-====== Function mbstring overload ======
-
-La función sobrecarga las funciones originales para cadenas de PHP.
-
-http://php.net/mbstring
