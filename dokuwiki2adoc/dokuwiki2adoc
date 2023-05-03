@@ -1,0 +1,2455 @@
+#!/bin/sh
+# vim: set fileencoding=utf-8:
+#
+# Copyright (c) 2015      Didier Spaier, Paris, France
+# Copyright (c) 2017-2018 Jakub Jirutka <jakub@jirutka.cz>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#---help---
+# Usage:
+#   dokuwiki2adoc [options] [--] FILE...
+#   dokuwiki2adoc [-h|-V]
+#
+# Converter from DokuWiki to AsciiDoc (Asciidoctor) format.
+#
+# Options and environment variables:
+#
+#   -a --adoc-attr <key=value>...
+#        Attribute to be added into the converted AsciiDoc document.
+#        This option may be specified multiple times and the value may contain
+#        spaces (really!).  Example: -a source-highlighter=rouge toc= sectnums!=
+#
+#   --dw-media-uri DW_MEDIA_URI
+#        Base URI of the images path of the DokuWiki instance *without* the
+#        protocol part (e.g. https://).  The purpose is the same as for
+#        --dw-root-uri.  Defaults to: $DW_ROOT_URI/_media (if $DW_ROOT_URI).
+#
+#   -d --dw-root-uri DW_ROOT_URI
+#        Base URI of the DokuWiki instance *without* the protocol part (e.g.
+#        https://).  This is used to replace external links pointing to this
+#        DokuWiki instance with equivalent internal links.
+#
+#   --image-exts IMAGE_EXTS...
+#        A space or comma separated file extensions that identify image files.
+#        Media {{links}} with such file extension will be converted to image:[]
+#        or image::[] macro, others to just link:[].
+#        Defaults to: gif jpg jpeg png svg.
+#
+#   -l --links-filter LINKS_FILTER
+#        Path of the script to use for filtering (rewriting) links.
+#
+#   -o --output FILE
+#        Path of the output file(s).  It may contain a placeholder "%s" which
+#        will be replaced by path of the input FILE with stripped file
+#        extension (more precisely, FILE up to the last dot).  For example:
+#        `dokuwiki2adoc -o out/%s.adoc docs/index.txt` -> out/docs/index.adoc.
+#        If not specified, output is written to the STDOUT, separated by \0
+#        if more FILEs are given.
+#
+#   -Q --quotes-type QUOTES_TYPE
+#        Specifies type of the quotation marks to convert 'single' and "double"
+#        quotes to.  Available types are:
+#          - plain       :  'single'   "double"  (default)
+#          - asciidoctor : '`single`' "`double`"
+#          - unicode-en  :  ‘single’   “double”
+#          - unicode-cs  :  ‚single‘   „double“
+#
+#   --sed SED
+#        Sed program to use. Defaults to: sed.
+#
+#   -h --help
+#        Print this message and exit.
+#
+#   -V --version
+#        Print the program version and exit.
+#
+# Each option can be also provided by environment variable.  If both option and
+# variable is specified and the option accepts only one argument, then the
+# option takes precedence.
+#
+# Please report bugs at <https://github.com/jirutka/dokuwiki2adoc/issues>.
+#---help---
+set -eu
+
+PROGNAME='dokuwiki2adoc'
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+VERSION=1
+
+help() {
+	$SED -En '/^#---help---/,/^#---help---/p' "$0" \
+		| sed -E 's/^# ?//; 1d;$d;'
+	exit ${1:-0}
+}
+
+die() {
+	printf "$PROGNAME: %s\n" "$1" >&2
+	exit ${2:-1}
+}
+
+# Inject attributes specified as IS1-separated key=value in $2 into
+# the file $1 as top-level AsciiDoc attributes.
+# Usage: inject_attrs foo.adoc "stem=latexmathtoc="
+inject_attrs() {
+	local file="$1"
+	local attrs="${2#}"
+	local chunk=''
+	local item value
+
+	local IFS=
+	for item in $attrs; do
+		value="${item#*=}"
+		chunk="$chunk${chunk:+\n}:${item%%=*}:${value:+ }$value"
+	done
+
+	$SED -i -e '1,2 {' \
+		-e '/^:imagesdir:/a\' \
+		-e "$chunk" \
+		-e '}' "$file"
+}
+
+# Returns 0 if the specified AsciiDoc file ($1) contains stem blocks or stem:[]
+# macros. This just just a quick and detection that may produce false positives.
+detect_stem() {
+	grep -q '\(^\[stem\]\|stem:\[[^]]\+\]\)' "$1"
+}
+
+dw2adoc() {
+	local infile="$1"
+	local outfile="$2"
+	local attrs="${3#}"
+	local exit_codes tmpfile
+
+	[ -r "$infile" ] || die "$infile: File does not exist or is not readable"
+
+	tmpfile=$(mktemp)
+
+	# The conversion pipeline with proper error reporting.
+	# See https://unix.stackexchange.com/a/14290/55894 for explaination.
+	exit_codes=$({
+			  { $SED -e "$PART0_SED" < "$infile" || echo "c0:$?;" >&3; } \
+			| { $SED -e "$PART1_SED" || echo "c1:$?;" >&3; } \
+			| { $SED -n "$PART2_SED" || echo "c2:$?;" >&3; } \
+			| { $SED -n "$PART3_SED" || echo "c3:$?;" >&3; } \
+			| { $LINKS_FILTER "$(dirname "$1")" > "$tmpfile" || echo "c4:$?" >&3; } \
+		} 3>&1)
+
+	case "${exit_codes%%;*}" in
+		c0:*)   die "$infile: Preparation failed" 10;;
+		c1:100) die "$infile: Unterminated comment in the input file" 21;;
+		c1:*)   die "$infile: Verticalization failed" 20;;
+		c2:*)   die "$infile: Main conversion failed" 30;;
+		c3:*)   die "$infile: Post-conversion failed" 40;;
+		c4:*)   die "$infile: Links filter failed" 50;;
+	esac
+
+	# Define :stem: attribute if the document contains STEM (latex).
+	if detect_stem "$tmpfile"; then
+		attrs="stem=latexmath${attrs:+}$attrs"
+	fi
+
+	if [ "$attrs" ]; then
+		inject_attrs "$tmpfile" "$attrs"
+	fi
+
+	cat "$tmpfile" > "$outfile"
+	rm -f "$tmpfile"
+}
+
+ADOC_ATTRS=''
+: ${DW_MEDIA_URI:=}
+: ${DW_ROOT_URI:=}
+: ${LINKS_FILTER:="$SCRIPT_DIR/rewrite-links"}
+: ${OUTPUT:=}
+: ${SED:=sed}
+
+while [ $# -gt 0 ]; do
+	n=2
+	case "$1" in
+		-a | --adoc-attr) ADOC_ATTRS="$ADOC_ATTRS$2";;
+		     --dw-media-uri) DW_MEDIA_URI="$2";;
+		-d | --dw-root-uri) DW_ROOT_URI="$2";;
+		     --image-exts) IMAGE_EXTS="${IMAGE_EXTS:-} $2";;
+		-l | --links-filter) LINKS_FILTER="$2";;
+		-o | --output) OUTPUT="$2";;
+		-Q | --quotes-type) QUOTES_TYPE="$2";;
+		     --sed) SED="$2";;
+		-h | --help) help 0;;
+		-V | --version) echo "$PROGNAME: $VERSION"; exit 0;;
+		--) shift; break;;
+		-*) echo "$PROGNAME: unknown option: $1" >&2; help 1 >&2;;
+		*) break;;
+	esac
+	shift $n
+done
+
+# Remove trailing slash.
+DW_ROOT_URI=${DW_ROOT_URI%/}
+DW_MEDIA_URI=${DW_MEDIA_URI%/}
+
+if [ "$DW_ROOT_URI" ] && [ -z "$DW_MEDIA_URI" ]; then
+	DW_MEDIA_URI="$DW_ROOT_URI/_media"
+fi
+
+IMAGE_FILE_PATT="\\\\.\\\\($(echo "${IMAGE_EXTS:-"gif jpg jpeg png svg"}" \
+	| $SED 's/[, ]\+/\\\\|/g')\\\\)"
+
+case "${QUOTES_TYPE:-"plain"}" in
+	asciidoctor) LS_QUOTE="'\`" RS_QUOTE="\`'" LD_QUOTE='"`' RD_QUOTE='`"';;
+	unicode-en) LS_QUOTE='‘' RS_QUOTE='’' LD_QUOTE='“' RD_QUOTE='”';;
+	unicode-cs) LS_QUOTE='‚' RS_QUOTE='‘' LD_QUOTE='„' RD_QUOTE='“';;
+	*) LS_QUOTE="'" RS_QUOTE="'" LD_QUOTE='"' RD_QUOTE='"';;
+esac
+
+# Remove all control characters that we use as marks from the input file.
+# Textual files should not contain any of them, so it is just to be sure.
+# Also ensure that the file does not end with a comment ("*/").
+# This is needed for detection of unterminated comment to work correctly.
+PART0_SED='s/[---​]//g; $ s/$/\n\n/'
+
+PART1_SED=$($SED -n \
+		-e '/^#-----BEGIN PART 1-----/,/^#-----END PART 1-----/p' < "$0")
+PART2_SED=$($SED -n \
+		-e "sDW_ROOT_URI${DW_ROOT_URI:-#@#@#}g" \
+		-e "sDW_MEDIA_URI${DW_MEDIA_URI:-#@#@#}g" \
+		-e "sLS_QUOTE$LS_QUOTEg" \
+		-e "sRS_QUOTE$RS_QUOTEg" \
+		-e "sLD_QUOTE$LD_QUOTEg" \
+		-e "sRD_QUOTE$RD_QUOTEg" \
+		-e "sIMAGE_FILE_PATT$IMAGE_FILE_PATTg" \
+		-e '/^#-----BEGIN PART 2-----/,/^#-----END PART 2-----/p' < "$0")
+PART3_SED=$($SED -n \
+		-e '/^#-----BEGIN PART 3-----/,/^#-----END PART 3-----/p' < "$0")
+
+
+while [ $# -gt 0 ]; do
+	destfile='/dev/stdout'
+	if [ "$OUTPUT" ]; then
+		destfile=$(printf %s "$OUTPUT" | $SED "s%s${1%.*}")
+		mkdir -p "$(dirname "$destfile")"
+	fi
+
+	dw2adoc "$1" "$destfile" "$ADOC_ATTRS"
+	shift
+
+	if [ -z "$OUTPUT" ] && [ $# -gt 1 ]; then
+		printf '\0'
+	fi
+done
+
+exit
+
+
+# ############################################################################ #
+#                                    PART 1                                    #
+# ############################################################################ #
+
+# sed is basically a line editor, that has limited abilities to process a
+# block of consecutive lines, partly because a POSIX compliant sed program
+# is not required to be able to store more than 8192 bytes in the pattern
+# and hold spaces.
+#
+# But the proper processing instructions of a line depends on its context
+# set by the previous line(s).
+#
+# To hand over this context from a line to the next one(s), we store it at
+# the end of each cycle in the hold space, represented by a character
+# string that we call the "baton" by analogy with a relay race, separated
+# from the input data by a  <0x04> character.
+#
+# At the beginning of each cycle we append the baton to the new input line
+# gathered in the pattern space.
+#
+# U+04 represents the last hex digits of the Unicode code point of
+# <end of text> in UTF-8.
+#
+# Here is the list of the control codes and other indicators used,
+# represented in the same way:
+#
+# Char     Corresponding mark or meaning
+# 01  :: begins a <code> ... </code> block
+# 02  :: begins a <file> ... </file> block
+# 03  :: begins a <latex> ... </latex> block
+# 04  :: separates the baton from the input data
+# 05  :: begins a preformatted block
+# 06  :: list item that can continue on the next line
+# 07  :: %% preceding the text not to be parsed (as <nowiki>)
+# 07+8C  :: start of inline latex (ends with )
+# 08  :: %% following the text not to be parsed (as </nowiki>)
+# 0B  :: to mark tags that have a special meaning in DokuWiki syntax
+# 0C  :: local tentative replacement
+# 0E  :: ends a <code>... or <file>... block or of a code block whose
+#          lines begin with two spaces
+# 0F  :: local tentative replacement
+# 10  :: local tentative replacement
+# 11  :: local tentative replacement
+# 12  :: local tentative replacement
+# 12  :: local tentative replacement
+# 14  :: indicates a blank line so we know that the previous was blank
+# 15  :: separator, replaced by a zero width space U+200B at end of script
+# 16  :: marks the beginning of the remaining part of the line where we
+#          still have to look for substitutions
+# 17  :: local tentative replacement
+# 1A  :: begins a <note[^<]*> ... </note> area
+# 1C  :: tentatively replaces /^  / in a preformatted block
+# 1D  :: local tentative replacement
+#
+# We have to deal with DokuWiki's syntax that:
+# * allows to put the opening or closing tag of a block anywhere on a line,
+# * has several ways of marking the beginning and the end of a code block
+#   and "no formatting" area,
+# * requests a specific usage of the "forced line break" and location of
+#   opening and closing tags of a code block to indicate that the next
+#   line(s) should be indented as part of a list item, cf.
+#   https://www.dokuwiki.org/faq:lists.
+#
+# We will standardize the formatting of the Code blocks, recording in the
+# baton the initial kind when it opens to allow finding the corresponding
+# closing tag or line.
+#
+# Similarly we will standardize the formatting of the "no formatting" areas
+# remembering the opening tag's kind in the baton.
+#
+# In this first part, we put each opening or closing tag of a block of text
+# on its own line, to ease further processing, somehow "verticalizing" the
+# input text.
+#-----BEGIN PART 1-----
+
+# ============================================================================ #
+#                                 Initialization                               #
+# ============================================================================ #
+
+# Append an empty baton to the first input line.
+1 s/$//
+
+# Append the baton, gathered from the hold space, to following input lines.
+2,$	{
+	G
+	s/\n//
+}
+
+# If the baton included a  (code block),  (file block), or  (latex block)
+# indicator, move it at the beginning of the pattern space so we know that we
+# are in a delimited  block.
+// {
+	s///
+	s/^//
+}
+// {
+	s///
+	s/^//
+}
+// {
+	s///
+	s/^//
+}
+
+:begin
+
+# ============================================================================ #
+#                                    Lists                                     #
+# ============================================================================ #
+
+# We know that we are not in the Code block if no  <0x01>,  <0x02> or
+#  <0x05> begins the pattern space. If after two spaces we see a "*" or
+# a "-' this is a list item, not the beginning of a preformatted block.
+#
+# Dokuwki detects a list item even with an odd number of leading spaces,
+# and no space between the last * or - and the text. The patterns are
+# adapted accordingly.
+#
+# We need to cope with differences between DokuWiki and AsciiDoc:
+# * In AsciiDoc, a list item is only recognized as such if preceded by an
+#   empty line or by a "line continuation" \n+\n indicator (and there can
+#   be any number of empty  lines between two list items). Else the line
+#   that begins with "*" is  just appended to the previous one.
+# * In DokuWiki an empty line ends a list, then the next list item will
+#   be of level 1 regardless of the number of spaces before "*" or "-".
+
+/[]/ !{
+	# Convert (un)ordered list item with multiple paragraphs (yalist plugin)
+	# into normal list on single line; following lines are concatenated with
+	# a line break (\\).
+	# FIXME: This can currently handle only one extra paragraph!
+	/^\(   *\)\{1,5\}\([*][*][^*]\|--[^-]\)/ {
+		$ !N
+		s/^\(  *[*-]\)[*-]/\1/
+		# Replace "  .." on next line with a line break "\\".
+		s/\([^\n]*\n\)  *[.][.]/\1 \\\\/
+		# Swap the newline and the baton.
+		s/\([^\n]*\)\n\(.*\)/\2\1/
+	}
+
+	# If this line is not a list item...
+	/^\(   *\)\{1,5\}[*][^*]/ !{
+		/^\(   *\)\{1,5\}-[^-]/ !{
+
+			# ...and the previous line was a list item...
+			// {
+				# ...remove leading spaces, it should not be processed as
+				# a preformatted block.
+				s/^   *//
+
+				# ...and this line is not empty, insert a newline before it.
+				/^/ !{
+					s/^/\n/
+				}
+			}
+
+			# ...remove the "list item" indicator from the baton, but if it
+			# begins with </code> or </file> as that doesn't close the item.
+			\.^</code>. !{
+				\.^</file>. !{
+					s///
+				}
+			}
+		}
+	}
+
+	# Unordered lists
+	/^\(   *\)\{1,5\}[*][^*]/ {
+		s/^   \?\* \?/* /
+		s/^     \?\* \?/** /
+		s/^       \?\* \?/*** /
+		s/^         \?\* \?/**** /
+		s/^           \?\* \?/***** /
+
+		# Insert a <newline> before this one if the previous was neither
+		# empty nor a list item.
+		// !{
+			// !s/^/\n/
+		}
+		# Remove the line break that could end a list item.
+		s/[\][\] *//
+
+		# Mark the line as being part of a list item
+		// !s///
+	}
+
+	# Ordered lists
+	/^\(   *\)\{1,5\}-[^-]/ {
+		s/^   \?- \?/. /
+		s/^     \?- \?/.. /
+		s/^       \?- \?/... /
+		s/^         \?- \?/.... /
+		s/^           \?- \?/..... /
+
+		# Insert a <newline> before this one if the previous was neither
+		# empty nor a list item.
+		// !{
+			// !s/^/\n/
+		}
+		# Remove the line break that could end a list item.
+		s/[\][\] *//
+
+		# Mark the line as being part of a list item.
+		// !s///
+	}
+}
+
+# A blank line interrupts a multiline list item.
+/^/ s///
+
+# If we have a pattern /^   */, we are in a preformatted block (not in a list,
+# that would have been detected above). Then, skip the processing of tags and
+# code blocks.
+/^   */ {
+	# If there's not a /*comment...
+	\|^   */[*]|! b preformat
+}
+//b preformat
+
+
+# ============================================================================ #
+#                                  Mark tags                                   #
+# ============================================================================ #
+
+# Mark sequences that have a special meaning in DokuWiki syntax.
+s|%%|&|g
+s|[$][$]|&|g  # latex block in mathjax plugin
+s|</\?nowiki>|&|g
+s|</\?code>|&|g
+s|</\?file>|&|g
+s|</\?cli>|&|g
+s|</\?latex>|&|g
+s|</\?note>|&|g
+s|<code[ |][^>\n]*>|&|g
+s|<file[ |][^>\n]*>|&|g
+s|<cli [^>\n]*>|&|g
+s|<note \+[[:alpha:]]* *>|&|g
+s|^/[*]|&|g  # start of comment /*
+s|\([ \n]\)\(/[*]\)|\1\2|g  # start of comment /*
+
+# Unmark tags inside blocks.
+// {
+	# Tentatively replace closing tags.
+	s|%%||g
+	s|</nowiki>||g
+	s|</code>||g
+	s|</file>||g
+	s|</cli>||g
+	s|</latex>||g
+	s|[$][$]||g
+
+	# The following substitutions are repeated until whole line is processed.
+	# Symbol  <0x16> is moved after each substitution to denote part of the
+	# line that has been already processed
+	s|^||
+	:unmark-blocks
+
+	# If we're in a code/file/latex (or cli) block opened on some previous
+	# line...
+	/^/ b unmark-code
+	/^/ b unmark-file
+	/^/ b unmark-latex
+
+	# Remove special mark inside <code[^>]*>...</code> (or </cli>).
+	# XXX: This process even <cli> tag, so we don't need to reserve another
+	# control character for marking multi-line <cli> block. But if we get
+	# <code> block with </cli>, it would incorrectly close the code block. :(
+	/[^]*<code[^>]*>/ {
+		s/\([^]*<code[^>]*>\)/\1/  # first move  behind <code>
+		:unmark-code
+		s/\([^]*\)\([^]\)/\1\2/  # remove all  until </code> or </cli>
+		t unmark-code
+		s/\([^]*[]\)/\1/  # move  behind </code> or </cli>
+	}
+
+	# Remove special mark inside <cli[^>]*>...</cli>
+	# and replace <cli[^>]*> with <code sh>.
+	/[^]*<cli[^>]*>/ {
+		s/\([^]*<\)cli[^>]*>/\1code sh>/
+		b unmark-code
+	}
+
+	# Remove special mark inside <file[^>]*>...</file>.
+	/[^]*<file[^>]*>/ {
+		s/\([^]*<file[^>]*>\)/\1/  # first move  behind <file>
+		:unmark-file
+		s/\([^]*\)\([^]\)/\1\2/  # remove all  until </file>
+		t unmark-file
+		s/\([^]*\)/\1/  # move  behind </file>
+	}
+
+	# Remove special mark inside <nowiki>...</nowiki>
+	/[^]*<nowiki>/ {
+		s/\([^]*<nowiki>\)/\1/  # first move  behind <nowiki>
+		:unmark-nowiki
+		s/\([^]*\)\([^]\)/\1\2/  # remove all  until </nowiki>
+		t unmark-nowiki
+		s/\([^]*\)/\1/  # move  behind </nowiki>
+	}
+
+	# Remove special mark inside <latex>...</latex>.
+	# This is for old DokuWiki's latex plugin.
+	/[^]*<latex>/ {
+		s/\([^]*<latex>\)/\1/  # first move  behind <latex>
+		:unmark-latex
+		s/\([^]*\)\([^]\)/\1\2/  # remove all  until </latex>
+		t unmark-latex
+		s/\([^]*\)/\1/  # move  behind </latex>
+	}
+
+	# Remove special mark inside %%...%%.
+	/[^]*/ {
+		s/\([^]*\)/\1/  # first move  behind %%
+		:unmark-%%
+		s/\([^]*\)\([^]\)/\1\2/  # remove all  until %%
+		t unmark-%%
+		s/\([^]*\)/\1/  # move  behind %%
+	}
+
+	# Remove special mark inside $$...$$ (but not across the lines).
+	# This is for DokuWiki's latex and mathjax plugins.
+	#
+	# FIXME: DokuWiki recognizes $$...$$ even inside nowiki area, but we don't.
+	# FIXME: $$ may not be closed at the same line, but we don't support it.
+	/[^]*/ {
+		s/[^]*/&/g  # mark every second (i.e. closing) $$
+		s/\([^]*\)/\1/  # move  behind $$
+		:unmark-$$
+		s/\([^]*\)\([^]\+\)/\1\2/  # remove all  until closing $$
+		t unmark-$$
+		s/\([^]*\)/\1/  # move  behind $$
+		s///g  # remove every-second mark
+	}
+
+	# Repeat if there's some remaining marked tag after the pointer ().
+	/.*/ t unmark-blocks
+
+	s|||g
+
+	# Replace <nowiki> with  <0x07> and </nowiki> with  <0x08>.
+	s|<nowiki>||g
+	s|||g
+
+	# Replace %%...%% with ... (<0x07>...<0x08>).
+	s|\([^]*\)|\1|g
+
+	# Replace marked inline <latex>...</latex> with
+	# <nowiki> with flag  <0x8c>.
+	s|<latex>\([^]*\)|\1|g
+
+	# Replace marked inline $$...$$ with <latex>...</latex>,
+	# so it will be converted into STEM block (i.e. TeX w/ display environment).
+	s|\([^]*\)|<latex>\1</latex>|g
+
+	# Revert tentative substitutions.
+	s||%%|g
+	s||$$|g
+	s||</nowiki>|g
+	s||</code>|g
+	s||</file>|g
+	s||</latex>|g
+
+	# Replace marked </cli> with </code>.
+	s||</code>|g
+	s||</cli>|g
+}
+
+
+# ============================================================================ #
+#                                    Comments                                  #
+# ============================================================================ #
+
+# Discard /*commented content*/.
+\|/[*]| {
+	:comment-addline
+	s|[*]/||g
+
+	# If comment is not terminated...
+	\|/[*][^]*| !{
+		$ !N  # read next line
+		s/\([^\n]*\)\(\n.*\)/\2\1/  # swap the next line and the baton
+		$ !b comment-addline  # iterate, unless we're at EOF
+	}
+	s| */[*][^]*||g  # discard everything between /* and */
+
+	# If there's some remaining comment...
+	\|/[*]| {
+		# If we're at the last line, it's most likely an error. DokuWiki ignores
+		# "/*" if there's no terminating "*/". This is not possible in sed (or
+		# I just don't know how), so we just add error after EOF and terminate.
+		$ {
+			s||\n\n**CAUTION: Conversion failed due to unterminated comment**\n&|
+			q100  # quit with status 100
+		}
+		b comment-addline  # iterate
+	}
+}
+
+
+# ============================================================================ #
+#                            Code and LaTeX Blocks                             #
+# ============================================================================ #
+
+# Here "code block" is designate a block surrounded by <code ...> then
+# </code> or by <file ...> then </file>: they have the same syntax in
+# DokuWiki. We will convert these blocks in "literal blocks" in
+# Asciidoc parlance.
+#
+# Here latex block is a multi-line block surrounded by <latex> then </latex>.
+# We will eventually (in part2) convert these blocks into passthrough block
+# labeled as [stem].
+#
+# In DokuWiki syntax a code block that begins inside a line belonging to
+# a list item is embedded in this list item.
+# But in AsciiDoc a literal block shall begin and end with marks alone
+# on their lines, and for such a block to be embedded in a list item that
+# immediately precedes it these marks should be surrounded by lines
+# including just a <plus> sign.
+#
+# So, as  <0x06> indicates a list item:
+# * If <0x06>! we need a newline before and after <code[^>]*> and
+#   </code> if they are not the first or the last word of the line resp.
+# * If <0x06> we need a line with just a <plus> before <code[^>]*>
+#   and after <plus> and <code[^>]*> if they are not the first or the
+#   last word respectively (a <code> that begins a line is not in a list
+#   item)
+#
+# * We process the tags only if they have not a "Code block begins"
+#   indicator on their left, not followed by a "Code block ends" indicator.
+# * We insert a "Code block begins" indicator after the <code> tag only if
+#   this tag doesn't end the line as else the indicator in the baton suffice.
+# * We remove all spaces after </code>
+#   <code> ... </code> blocks.
+# * We skip the <code> tags if preceded by %% or </nowiki>, not followed
+#   by another %% or </nowiki>. <code> begins a Code block, but in
+#   a delimited block.
+#
+# We wil convert separately the beginning of blocks with a "to be
+# highlighted" source code.
+#
+# We perform here the first part of the conversion, that is isolate each
+# tag on a line, the opening tag being preceded by a line with
+# [source,<language>] in case of syntax highlighting.
+# The replacement of the tags by lines containing just "----" (or "++++" for
+# latex block) will be made in the second part of the program.
+
+/<\(code\|file\)[^>]*>/ {
+	# Downloadable file block - convert file name into AsciiDoc block title.
+	s/<file \+\([[:alnum:]]\+\|-\)[,;:]* \+[.]*\([^|>][^>]*\)>/<file \1.\2\n>/g
+	s/<file -\(\.[^>]*\)>/<file plain \1>/g
+
+	# Discard extra spaces between tag and lang, discard everything after lang
+	# (may be line number or incorrect file name in code block) until "|" or
+	# block title preprocessed above.
+	s/<\(code\|file\) \+\([[:alpha:]][[:alnum:]]*\)\? *[^|>]*\([^>]*\)>/<\1 \2\3>/g
+
+	# Discard extra spaces inside tag and line number.
+	s/<code *[0-9]*|\? *>/<code>/g
+	s/<file *|\? *>/<file>/g
+
+	# code/file block with description (plugin code2) - discard extra spaces
+	# and dots before description, discard header/footer mark, convert
+	# description into AsciiDoc block title.
+	s/<\(code\|file\)\( [^| ]\+\)\? *|[hf]\?[ .]*\([^>]\+\)>/<\1\2.\3\n>/g
+
+	# Discard extra spaces between code/file tag and end of the line.
+	s/<\(code\|file\)\([^>]*\)> */<\1\2>/g
+
+	# If the list item starts with a code/file block, insert "{blank}"
+	# before the code block. Otherwise it would end up as an "empty" listm item,
+	# thus will not be recognized by Asciidoctor as a list item.
+	// s/^\([*]\+ \) *\(<\(code\|file\)[^>]*>\)/\1{blank}\2/
+}
+
+# In this loop we process all code and latex blocks in an input line.
+:codes
+
+# ---------------------------------------------------------------------------- #
+#                   Code and latex blocks outside a list item                  #
+# ---------------------------------------------------------------------------- #
+// ! {
+	# Closing tags
+	# ~~~~~~~~~~~~
+	# We put the closing tags before the opening ones, else in case of
+	# a pattern like the following on a single line:
+	# ^</code> ... <code>$
+	# the <code> tag would not be converted. This case is unlikely outside
+	# a list items, but who knows?
+	# NOTE: I'm not sure if this is still true. [JJ]
+	#
+	\@</code>@ {
+		# Do not allow a forced line break after a closing tag.
+		s@^\(</code>\) *[\][\] *@\1@
+		s@\([^]*</code>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</code> *@</code>\n@
+		# Begins a line.
+		s@^</code>\([[:print:]]\)@</code>\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</code> *@\1\n</code>@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</code>\([[:print:]]\)@\1\n</code>\n\2@
+	}
+	\@</file>@ {
+		# Do not allow a forced line break after a closing tag.
+		s@^\(</file>\) *[\][\] *@\1@
+		s@\([^]*</file>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</file> *@</file>\n@
+		# Begins a line.
+		s@^</file>\([[:print:]]\)@</file>\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</file> *@\1\n</file>@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</file>\([[:print:]]\)@\1\n</file>\n\2@
+	}
+	\@</latex>@ {
+		# Do not allow a forced line break after a closing tag.
+		s@^\(</latex>\) *[\][\] *@\1@
+		s@\([^]*</latex>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</latex> *@</latex>\n@
+		# Begins a line.
+		s@^</latex>\([[:print:]]\)@</latex>\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</latex> *@\1\n</latex>@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</latex>\([[:print:]]\)@\1\n</latex>\n\2@
+	}
+
+	# Opening tags
+	# ~~~~~~~~~~~~
+	# Plain source code; convert to a listing block.
+	/<code\(\.[^>]*\)\?>/ {
+		/[][^]*<code\(\.[^>]*\)\?>/ !{
+			# On a separate line.
+			s/^<code\(\.[^>]*\)\?>/\1<code>/
+			# Begins a line.
+			s/^<code\(\.[^>]*\)\?>\([[:print:]]\)/\1<code>\n\2/
+			# Ends a line. If we are in a list item, it continues.
+			s/<code\(\.[^>]*\)\?> */\n\1<code>/
+			# Inside a line.
+			s/\([[:print:]]\)<code\(\.[^>]*\)\?>\([[:print:]]\)/\1\n\2<code>\n\3/
+		}
+	}
+	# Highlighted source code; convert to a source block.
+	/<code [[:alpha:]][^>]*>/ {
+		/[][^]*<code \+[[:alpha:]][^>]*>/ !{
+			# On a separate line.
+			s/^<code \([[:alnum:]]\+\)\(\.[^>]*\)\?>/[source,\1]\n\2<code>/
+			# Begins a line.
+			s/^<code \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/[source,\1]\n\2<code>\n\3/
+			# Ends a line. If we are in a list item, it continues.
+			s/<code \([[:alnum:]]\+\)\(\.[^>]*\)\?> */\n[source,\1]\n\2<code>/
+			# Inside a line.
+			s/\([[:print:]]\)<code \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/\1\n[source,\2]\n\3<code>\n\4/
+		}
+	}
+	# Plain file block; convert to a listing block.
+	/<file\(\.[^>]*\)\?>/ {
+		/[][^]*<file\(\.[^>]*\)\?>/ !{
+			# On a separate line.
+			s/^<file\(\.[^>]*\)\?>/\1<file>/
+			# Begins a line.
+			s/^<file\(\.[^>]*\)\?>\([[:print:]]\)/\1<file>\n\2/
+			# Ends a line. If we are in a list item, it continues.
+			s/<file\(\.[^>]*\)\?> */\n\1<file>/
+			# Inside a line.
+			s/\([[:print:]]\)<file\(\.[^>]*\)\?>\([[:print:]]\)/\1\n\2<file>\n\3/
+		}
+	}
+	# Highlighted file block; convert to a source block.
+	/<file [[:alpha:]][^>]*>/ {
+		/[][^]*<file \+[[:alpha:]][^>]*>/ !{
+			# On a separate line.
+			s/^<file \([[:alnum:]]\+\)\(\.[^>]*\)\?>/[source,\1]\n\2<file>/
+			# Begins a line.
+			s/^<file \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/[source,\1]\n\2<file>\n\3/
+			# Ends a line. If we are in a list item, it continues.
+			s/<file \([[:alnum:]]\+\)\(\.[^>]*\)\?> */\n[source,\1]\n\2<file>/
+			# Inside a line.
+			s/\([[:print:]]\)<file \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/\1\n[source,\2]\n\3<file>\n\4/
+		}
+	}
+	# Latex block.
+	/<latex>/ {
+		# On a separate line.
+		s/^<latex>/<latex>/
+		# Begins a line.
+		s/^<latex> *\([[:print:]]\)/<latex>\n\1/
+		# Ends a line. If we are in a list item, it continues.
+		s/<latex> */\n<latex>/
+		# Inside a line.
+		s/\([[:print:]]\)<latex> *\([[:print:]]\)/\1\n<latex>\n\2/
+	}
+}
+
+# ---------------------------------------------------------------------------- #
+#                   Code and latex blocks inside a list item                   #
+# ---------------------------------------------------------------------------- #
+// {
+	# Closing tags
+	# ~~~~~~~~~~~~
+	# In this case we put the closing tags before the opening ones, else in
+	# case of a pattern like the following in a single line:
+	# ^</code> ... <code>$
+	# the <code> tag would not be converted.
+	# NOTE: I'm not sure if this is still true. [JJ]
+	#
+	\@</code>@ {
+		# Do not allow a forced line break after a closing tag or at EOL
+		s@^\(</code>\) *[\][\] *@\1@
+		s@^\(</code>.*\)[\][\]@\1@
+		s@\([^]*</code>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</code> *@</code>\n+@
+		# Begins a line.
+		s@^</code>\([[:print:]]\)@</code>\n+\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</code> *@\1\n</code>\n+@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</code>\([[:print:]]\)@\1\n</code>\n+\n\2@
+	}
+	\@</file>@ {
+		# Do not allow a forced line break after a closing tag or at EOL.
+		s@^\(</file>\) *[\][\] *@\1@
+		s@^\(</file>.*\)[\][\]@\1@
+		s@\([^]*</file>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</file> *@</file>\n+@
+		# Begins a line.
+		s@^</file>\([[:print:]]\)@</file>\n+\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</file> *@\1\n</file>\n+@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</file>\([[:print:]]\)@\1\n</file>\n+\n\2@
+	}
+	\@</latex>@ {
+		# Do not allow a forced line break after a closing tag or at EOL
+		s@^\(</latex>\) *[\][\] *@\1@
+		s@^\(</latex>.*\)[\][\]@\1@
+		s@\([^]*</latex>\) *[\][\] *@\1@
+
+		# On a separate line.
+		s@^</latex> *@</latex>\n+@
+		# Begins a line.
+		s@^</latex>\([[:print:]]\)@</latex>\n+\n\1@
+		# Ends a line.
+		s@\([^]*[[:print:]]\)</latex> *@\1\n</latex>\n+@
+		# Inside a line.
+		s@\([^]*[[:print:]]\)</latex>\([[:print:]]\)@\1\n</latex>\n+\n\2@
+	}
+
+	# Opening tags
+	# ~~~~~~~~~~~~
+	# Plain source code; convert to a listing block.
+	/<code\(\.[^>]*\)\?>/ {
+		/[][^]*<code\(\.[^>]*\)\?>/ !{
+			# Inside a line.
+			s/\([[:print:]]\)<code\(\.[^>]*\)\?>\([[:print:]]\)/\1\n+\n\2<code>\n\3/
+			# Ends a line. If we are in a list item, it continues.
+			s/<code\(\.[^>]*\)\?>/\n+\n\1<code>/
+		}
+	}
+	# Highlighted source code; convert to a source block.
+	/<code [[:alpha:]][^>]*>/ {
+		/[][^]*<code [[:alpha:]][^>]*>/ !{
+			# Inside a line.
+			s/\([[:print:]]\)<code \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/\1\n+\n[source,\2]\n\3<code>\n\4/
+			# Ends a line. If we are in a list item, it continues.
+			s/<code \([[:alnum:]]\+\)\(\.[^>]*\)\?>/\n+\n[source,\1]\n\2<code>/
+		}
+	}
+	# Plain file block; convert to a listing block.
+	/<file\(\.[^>]*\)\?>/ {
+		/[][^]*<file\(\.[^>]*\)\?>/ !{
+			# Inside a line.
+			s/\([[:print:]]\)<file\(\.[^>]*\)\?>\([[:print:]]\)/\1\n+\n\2<file>\n\3/
+			# Ends a line. If we are in a list item, it continues.
+			s/<file\(\.[^>]*\)\?>/\n+\n\1<file>/
+		}
+	}
+	# Highlighted file block; convert to a source block.
+	/<file [[:alpha:]][^>]*>/ {
+		/[][^]*<file [[:alpha:]][^>]*>/ !{
+			# Inside a line.
+			s/\([[:print:]]\)<file \([[:alnum:]]\+\)\(\.[^>]*\)\?>\([[:print:]]\)/\1\n+\n[source,\2]\n\3<file>\n\4/
+			# Ends a line. If we are in a list item, it continues.
+			s/<file \([[:alnum:]]\+\)\(\.[^>]*\)\?>/\n+\n[source,\1]\n\2<file>/
+		}
+	}
+	# Latex block.
+	/<latex>/ {
+		# Inside a line.
+		s/\([[:print:]]\)<latex> *\([[:print:]]\)/\1\n+\n<latex>\n\2/
+		# Ends a line. If we are in a list item, it continues.
+		s/<latex>/\n+\n<latex>/
+	}
+}
+t codes
+
+# If  <0x06> and we closed a code or latex block,  <0x04> should be
+# preceded by a "line continuation" indicator. We check that after all forced
+# line breaks have been converted after the code or latex block.
+// {
+	/[^]*/ {
+		/\n+/ !s//\n+/
+	}
+}
+
+# Outside a list item
+// !{
+	# Insert a newline befor a source and listing block.
+	/<\(code\|file\)>/ {
+		# Source block
+		/\[source,[[:alnum:]]*]\n\(\.[^\n]*\n\)\?<\(code>\|file>\)/ {
+			s/\[source,[[:alnum:]]*]\n\(\.[^\n]*\n\)\?<\(code>\|file>\)/\n&/
+			b out
+		}
+		# Listing block
+		s/\(\.[^\n]*\n\)\?<\(code>\|file>\)/\n&/
+		# LaTeX block
+	}
+	# Insert a newline before a latex block.
+	s/<latex>/\n&/
+}
+
+:out
+
+# Inside code blocks, we escape "----" that ends an AsciiDoc Listing block.
+# Inside latex blocks, we escape "++++" that ends an AsciiDoc STEM block.
+# We precede it by a  <0x15> now to ease checking. We will replace it by
+# a zero width space <200B> before printing the line.
+/[]/ {
+	s/\([]\)\(----\)/\1\2/
+	s/^++++/++++/
+}
+
+# ============================================================================ #
+#                              Preformatted text                               #
+# ============================================================================ #
+:preformat
+
+# Now we process preformatted blocks, already recognized as such.
+# They are Code blocks made of lines beginning with two spaces.
+
+// {
+	# Close a formatted block if the line doesn't begin with two spaces...
+	/^  /  !{
+		s///g
+		s@[^]*@</code>\n&@
+		# Print the line that ends the Code block.
+		P
+		# Delete it. We don't use the D command because we don't want to
+		# append a new baton.
+		s@</code>\n@@
+		# Then process the remaining line
+		b begin
+	}
+	# ...otherwise tentatively replace these spaces with  <0x1C>
+	# that we will remove before printing.
+	/^  / s/  //
+
+	# And inside this line "escape" the <code[^]]*> and </code>, <file[^]]*>
+	# and </file>, and <latex> and </latex> so they be not considered as such
+	# in the second part.
+	s@<code\([^>]*>\)@<code\1@g
+	s@</code>@</code>@g
+	s@<file\([^>]*>\)@<file\1@g
+	s@</file>@</file>@g
+	s@<latex>@<latex>@g
+	s@</latex>@</latex>@g
+
+	# And also escape "----" that ends an AsciiDoc Listing block.
+	s@^----@----@
+}
+
+# Let's find the beginning of preformatted blocks of text.
+# An input line beginning with two spaces and that is not in a list item
+# nor part of a Code block begins a preformatted block.
+# But if this input line contains no graphical character, then it begins
+# such a block only if one of the following adjacent lines also begins with
+# two spaces and includes a graphical character.
+#
+# To check that, in case the first line of the "could be" preformatted block
+# contains only spaces, we fetch the next lines until we find a line that
+# either does not begin with two spaces, or includes a graphical
+# character in POSIX parlance.
+#
+# * If the line contains at least two spaces and nothing else, we fetch the
+#   next line.
+# * If the line does not begin with two spaces we begin a new cycle without
+#   fetching a new input line: we didn not begin a preformatted block.
+# * Else the line begins with two spaces and includes at least one graphical
+#   character. Then we mark the line as preformatted and branch to the label
+#   "preformat" that begins the processing of preformatted blocks.
+#
+# In all cases we remove the previous line after having fetched a new one.
+#
+# We insert an empty line before ^<code>, as a workaround against an
+# AsciiDoc bug that wrongly converts e.g.:
+#
+#   ----
+#   Literal block 1
+#   ----
+#   <line of text>
+#   ----
+#   Literal block 2
+#   ----
+#
+# in cases where <line of text> is very short like "to".
+# NOTE: Does this apply even to Asciidoctor?
+#
+/[]/ !{
+	/^   *[[:graph:]]/ {
+		s/^/<code>\n/
+		s/^<code>/\n&/
+		P
+		s/\n//
+		P
+		s/<code>\n//
+		s///
+		b preformat
+	}
+	/^   */ {
+		:addline
+		$ !N
+
+		# If the next line contains at least two spaces and only that,
+		# read next line.
+		/[^\n]*\n  *$/ {
+			s/\([^\n]*\)\(\n.*\)/\2\1/  # move baton to the end
+			s/[^\n]*\n//
+			b addline
+		}
+
+		# If the next line doesn't begin with two spaces, we are not in a
+		# Code block. Then begin a new cycle without fetching a new line nor
+		# appending another baton.
+		/[^\n]*\n  / !{
+			s/^  *//
+			s/\([^\n]*\)\n\(.*\)/\2\1/  # move baton to the end
+			s/[^\n]*\n//
+			b begin
+		}
+
+		# Else the next line begins with two spaces but also includes other
+		# characters so we actually began a preformatted block.
+		# Then branch to the label that begins the processing of such blocks.
+
+		# Swap the newline and the baton.
+		s/\([^\n]*\)\(.*\)/\2\1/
+		# Remove the old line.
+		s/[^\n]*\n//
+		# Insert a line with <code> before the new line.
+		s/^/<code>\n/
+		s/^<code>/\n&/
+		P
+		s/\n//
+		# Print then remove the line with <code>.
+		P
+		s/<code>\n//
+		# Only the new line remains in the pattern space
+		# Mark the line as part of a preformatted block.
+		s///
+
+		b preformat
+	}
+}
+
+
+# ============================================================================ #
+#                                 Block quotes                                 #
+# ============================================================================ #
+
+# A line beginning with ">" that is not in a delimited block is part of
+# a an email-like quote.  We will replace ">" by "> " (Asciidoctor's
+# Markdown-style blockquote) and append a new line with the same sequence of
+# ">" after each quote line.  We also need to make sure that an empty line
+# precedes a set of quoted lines.
+#
+/[]/ !{
+	/^>/ !{
+		# If the previous line was a block quote...
+		/\([^>]*\)>\([^>]*\)/ {
+			# remove the block quote indicator from the baton
+			s/\([^>]*\)>\([^>]*\)/\1\2/
+			# and insert a newline before this line.
+			s/^/\n/
+		}
+	}
+	/^>/ {
+		# Append a blank line if the previous line was not a blank line
+		# or quote.
+		// !{
+			s/^/\n/
+			/[^>]*>[^>]*/ !s/^/\n/
+		}
+
+		# Replace each consecutive ">" with .
+		:quotes
+		s/^\(*\)>/\1/
+		s/\n\(*\)>/\1/
+		t quotes
+
+		# Remove spaces after the last ">" () and append a new line with
+		# the same sequence of ">" ().
+		s/\(\+\) *\([^\n]*\)/\1\2\n\1/
+
+		# Convert + to AsciiDoc Markdown-style blockquotes "> "+.
+		s//> /g
+
+		# Add ">" to the baton (unless it's already here), so we know that
+		# the previous line was a block quote.
+		/[^>]*>[^>]*/ !s//>/
+	}
+}
+
+
+# ============================================================================ #
+#                              Forced line break                               #
+# ============================================================================ #
+
+# Line breaks after code and latex blocks are already converted.
+# Remove line breaks after </code>, </file>, or </latex>.
+s@</\(code\|file\|latex\)> *[\][\] *@</\1>@g
+
+# Inside a list item
+# ~~~~~~~~~~~~~~~~~~
+# * A line break at end of line will be removed.
+# * Line continuation indicators will be converted.
+# * If a forced line break has been converted a \n+ is appended unless
+#   the line ends in <code[^>]*>, <file[^>]*> or <latex>.
+// {
+	:ack
+	/[\][\] */ s/[\][\] *//
+	/ *[\][\]  */ {
+		s/ *[\][\]  */\n+\n/
+		/<code[^>]*>/ !{
+			/<file[^>]*>/ !{
+				/<latex>/ !{
+					/\n+/ !s//\n+/
+				}
+			}
+		}
+	}
+	t ack
+}
+# // {
+# 	:ack
+# 	/[\][\] */ {
+# 		s/[\][\] *//
+# 			s///
+# 	}
+# 	/ *[\][\]  */ {
+# 		s/ *[\][\]  */\n+\n/
+# 		/<code[^>]*>* */ !{
+# 			/<file[^>]*>* */ !s///
+# 		}
+# 	}
+# 	t ack
+# }
+
+# Outside a list item
+# ~~~~~~~~~~~~~~~~~~~
+# * A Line break that begins a line will be removed.
+# * A line break in a nowiki area will not be converted.
+# * A line break in a Code or preformatted block will not be converted.
+# * A line break inside a line will not be converted.
+# * Line breaks inside tables will be processed in @part2@.
+# * All other line breaks will be converted, inside or at the end of line.
+:linebr
+/^[|^]/ !{
+	// !{
+		# No part of the line is in a code/latex block or nowiki area.
+		:linebr1
+		/^[^]/ {
+			s/^ *[\][\] *//
+			s/[\][\] */ +/
+			s/ *[\][\]  */ +\n/
+		}
+		# This part of the line follows a code/latex block.
+		/[^]*[\][\]/ {
+			s/[\][\] */ +/
+			s/ *[\][\]  */ +\n/
+		}
+		# This part of the line follows a nowiki area.
+		/[^]*[\][\]/ {
+			s/[\][\] */ +/
+			s/ *[\][\]  */ +\n/
+		}
+	}
+}
+t linebr
+
+
+# ============================================================================ #
+#                                 Admonitions                                  #
+# ============================================================================ #
+
+// !{
+	# Opening tags
+	/<note[^<]*>/ {
+		# On its own line
+		/^<note[^<]*>/ {
+			# Prepend empty line if the previous line was not blank.
+			//! s/^/\n&/
+		}
+		# Begins a line
+		/^<note[^<]*>[^]/ {
+			# If <note>...</note> is on the same line, use paragraph admonition syntax.
+			\@</note> *@ {
+				s@^<note>\([^:<\n][^<\n]*\)</note>@NOTE: \1\n@
+				s@^<note \+important *>\([^:<\n][^<\n]*\)</note>@IMPORTANT: \1\n@
+				s@^<note \+tip *>\([^:<\n][^<\n]*\)</note>@TIP: \1\n@
+				s@^<note \+warning *>\([^:<\n][^<\n]*\)</note>@WARNING: \1\n@
+			}
+			# If the tag was not substituted above, use block syntax (this is
+			# converted to proper AsciiDoc markup in part2).
+			\@^<note[^<]*>@ {
+				s/^\(<note[^<]*>\)/\1\n/
+				s/$//
+			}
+			# Prepend empty line if the previous line was not blank.
+			//! s/^/\n&/
+		}
+		# Inside a line.
+		/[[:print:]]<note[^<]*>[[:print:]]/ {
+			s/\([[:print:]]\)\(<note[^<]*>\)\([[:print:]]\)/\1\n\2\n\3/
+			s/$//
+		}
+		# Ends a line.
+		/[[:print:]]<note[^<]*>/ {
+			s/\([[:print:]]\)\(<note[^<]*>\)/\1\n\2/
+			s/$//
+		}
+	}
+
+	# Closing tag
+	\.</note>. {
+		s@</note> *+@</note>@
+		# On its own line; nothing to do yet.
+		\.^</note>*. {
+			s///
+		}
+		\.\n</note>*. {
+			s///
+		}
+		# Begins a line.
+		\.^</note>[^]. {
+			s@^</note>@</note>\n@
+			s///
+		}
+		# Inside a line.
+		\.[[:print:]]</note>[[:print:]]. {
+			s@\([[:print:]]\)</note>\([[:print:]]\)@\1\n</note>\n\2@
+			s///
+		}
+		# Ends a line.
+		\.[[:print:]]</note>*. {
+			s@\([[:print:]]\)</note>@\1\n</note>@
+			s///
+		}
+		s// +/
+	}
+}
+
+
+# ============================================================================ #
+#                                 Finalization                                 #
+# ============================================================================ #
+
+# If we find two consecutive patterns of "line continuation", remove one.
+# This would occur for instance if a line ends in:
+# "you will have to convert it to a 'compat32' package: \\ <code>"
+# and is part of a list item.
+s@\n+\n\n+\n@\n+\n@g
+
+# We will insert a  <0x15> before patterns that would be parsed in
+# AsciiDoc as explicitly numbered list items.
+s/^[[:alnum:]]\+\./&/
+s/^[ixvIXV]\+)/&/
+
+# Replace  <0x15> by zero width space <200B>.
+s//​/g
+
+h
+# The hold space content's is now identical to that of the pattern space.
+x
+
+# Following changes are done in the hold space
+
+# In case of a blank line we write  <0x14> in the baton if there wasn't
+# one already so we will know that the next line has been preceded by a
+# blank line.
+/^/ {
+	// !s/$//
+}
+/\n/ {
+	/\n+/ !{
+		// !s/$//
+	}
+}
+# Else we just remove the  <0x14> if any, but in case of a forced line break.
+/^/ !{
+	/ / !{
+		/\n/ !s///
+	}
+}
+
+// {
+	/[^]*/ !s//&/
+}
+// {
+	/[^]*/ !s//&/
+}
+// {
+	/[^]*/ !s//&/
+}
+
+s/.*//
+x
+s/.*//
+s/[]//g
+
+#-----END PART 1-----
+
+
+# ############################################################################ #
+#                                    PART 2                                    #
+# ############################################################################ #
+
+# In the first part the markup of the input file has been "verticalized",
+# i.e. each opening or closing tag of a Code or Admonition block is now
+# alone in its line. This allows to print as-is the lines of a Code block,
+# skipping all substitutions inside these lines.
+#
+# List of the control codes and other indicators used in this part:
+#
+# Char     Corresponding mark or meaning
+# 01  :: <code>
+# 02  :: <file>
+# 03  :: multi-line <latex> block
+# 04  :: separates the stack from the input data
+# 05  :: to mark characters that have a special meaning
+# 06  :: tentatively replaces "mono-spaced" '' =>  => ``
+# 07  :: %% preceding the text not to be parsed (as <nowiki>)
+# 07+8c  :: start of inline latex
+# 08  :: %% following the text not to be parsed (as </nowiki>)
+# 0B  :: left single quotation mark: ' => ^K => '`
+# OC  :: right single quotation mark: ' => ^L => `'
+# 0E  :: left double quotation mark: " => ^N => "`
+# 0F  :: right double quotation mark: " => ^O => `"
+# 10  :: ` constrained mono-spaced
+# 11  :: various local tentative replacements
+# 12  :: tentatively replaces "|" in tables f no cell boundary,
+#          then escaped as "\" once converted.
+# 13  :: tentatively replaces "|" in tables f no cell boundary,
+#          then restored as "^" once converted (no special meaning in
+#          AsciiDoc syntax)
+# 14  :: table row
+# 15  :: [ then ++[++
+# 16  :: indicates that a table cell have already been formatted
+# 17  :: //
+# 18  :: [[
+# 19  :: ]]
+# 1A  :: ] then ++]++
+# 1D  :: tentative beginning and end of image:target[attributes]
+# 1E  :: last line was /^\n$/
+# 1F  :: various local tentative replacements
+# 91  :: start of link to be processed by rewrite-links script
+# 92  :: end of link to be processed by rewrite-links script
+#-----BEGIN PART 2-----
+
+# Append an empty baton to the first input line.
+1 s/$//
+
+# If we see a line with just a <plus> sign it is a list item continuation:
+# * if the next is a heading, replace the <plus> with a <new line>,
+# * if the next is empty, delete the first with the <plus>,
+# * else print then delete the first.
+/^+$/ {
+	N
+	/\n===*[^=]\+===*/ !{
+		/\n$/ !{
+			x
+			s/$//
+			x
+			P
+			D
+		}
+	}
+	/\n===*[^=]\+===*/ {
+		s/^+//
+		P
+	}
+	/\n$/ s/+\n//
+}
+
+# Append the baton, gathered from the hold space, to following input lines.
+2,$	{
+	G
+	s/\n//
+}
+
+# Replace "[[" with  <0x18> and "]]" with  <0x19>.
+s/\[\[//g
+s/\]]//g
+
+# If we see the beginning of a code block or multi-line latex block, we
+# indicate that in the baton. Then we print the line and begin another cycle
+# until we find a closing tag. Then we remove the code block indicator from
+# the baton, print the line and start a new cycle.
+/[]/ !{
+	/^\[source,[[:alpha:]]*\]/ b print
+	/^\[verse]/ b print
+	/^<code>/ {
+		s///
+		s/<code>/----/
+		b print
+	}
+	/^<file>/ {
+		s///
+		s/<file>/----/
+		b print
+	}
+	/^<latex>/ {
+		s///
+		s/<latex>/\[stem\]\n++++/
+		b print
+	}
+}
+
+# Prevent expansion of an include macro inside an AsciiDoc Delimited block.
+/[]/ {
+	s/^include::/\\&/
+}
+
+# Get rid of the Code blocks, converted to Listing blocks: skip parsing
+# their content.
+// {
+	\@</code>@ {
+		s///
+		s@</code>@----@
+		b print
+	}
+	\@</code>@ !{
+		b print
+	}
+}
+// {
+	\@</file>@ {
+		s///
+		s@</file>@----@
+		b print
+	}
+	\@</file>@ !{
+		b print
+	}
+}
+
+# Get rid of the multi-line latex blocks, converted to STEM blocks: skip
+# parsing their content.
+// {
+	\@</latex>@ {
+		s///
+		s@</latex>@++++@
+		b print
+	}
+	\@</latex>@ !{
+		b print
+	}
+}
+
+# Escape existing  [<text>] that should not be parsed in AsciiDoc.
+# We do that before any conversion that would lead to [<text>] that
+# should be parsed, like [source] or [verse].
+# "[" and "]" will be eventually escaped as "++[++" and "++]++" but we
+# tentatively replace them by  <0x15> and  <0x1A> respectively to avoid
+# collisions with "no formatting" opening or closing tags that are converted
+# to "++".
+#
+# NOTE: I'm not sure if this reasoning is still valid after changing
+# $[[ and ]]$$ to ++[++ and ++]++. [JJ]
+s/\[//g
+s/]//g
+
+# HTML comments. These comments are provided by the html comment plug-in
+# for DokuWiki, see https://www.dokuwiki.org/plugin:htmlcomment
+/ *<!--.*-->/ {
+	s@ *\(<!--.*-->\)@// \1@
+	b print
+}
+
+# To avoid a collision with "emphasized" whose marks are "//" in Dokuwiki,
+# we will tentatively replace "//" with  <0x17>.
+s@http://@http:@g
+s@https://@https:@g
+s@ftp://@ftp:@g
+s@ftps://@ftps:@g
+
+
+# ============================================================================ #
+#                                Horizontal rule                               #
+# ============================================================================ #
+
+/^-----*/ {
+	s/^-----*/'''\n/
+	b print
+}
+
+
+# ============================================================================ #
+#                               Mark "terminals"                               #
+# ============================================================================ #
+
+# Mark sequences that have a special meaning in DokuWiki syntax by prepending
+# them with  <0x05>.
+s:{{:&:g                  # start of media link
+s:}}:&:g                  # end of media link
+s:~~:&:g                  # start/end of control macro
+s:\*\*:&:g                # bold
+s://:&:g                  # italic
+s:__:&:g                  # underline
+s:'':&:g                  # mono-spaced
+s:[$]:&:g                 # start/end of inline (La)TeX
+s:\(^\|[^']\)':\1':g    # single quote
+s:":&:g                   # double quote
+s:<:&:g                   # first character of HTML-like tag, email address delimiter
+s:((:&:g                  # start of footnote
+s:)):&:g                  # end of footnote
+s:---:&:g                 # em-space
+s:\(^\|[^-]\)--:\1--:g  # en-space (in middle/end of line)
+s:([cr]):&:g              # (c), (r)
+s:(tm):&:g                # (tm)
+# icons
+s/:!:/&/g
+s/:?:/&/g
+
+# Remove special meaning inside <nowiki> ... </nowiki> and %% ... %% areas.
+# FIXME: DokuWiki actually recognizes $...$ (inline latex) even inside nowiki
+#        areas, but that's quite complicating for us, so not doing it now.
+:unescape
+// {
+	s/\([^]*\)/\1/
+	s/\([^]*\)/\1[[/
+	s/\([^]*\)/\1]]/
+	s/\([^]*\)/\1[/
+	s/\([^]*\)/\1]/
+	t unescape
+}
+
+
+# ============================================================================ #
+#                                Control macros                                #
+# ============================================================================ #
+
+# Discard all control macros.
+s/~~[[:alnum:]]\+~~//g
+
+
+# ============================================================================ #
+#                                    Links                                     #
+# ============================================================================ #
+
+# In case someone asks... No we don't check that the URI be well formed.
+#
+# We convert them before the tables, because in DokuWiki syntax they can
+# include a "|" that would otherwise be confused with a cell boundary.
+
+# Replace absolute links to pages on DokuWiki with internal links (but w/o
+# converting "/" to ":").
+s@ *https\?:DW_ROOT_URI/\([^]\+\)@\1@g
+
+# ---------------------------------------------------------------------------- #
+#                                External links                                #
+# ---------------------------------------------------------------------------- #
+
+# Remove the space(s) that could precede the vertical bar or follow "[[" in
+# Dokuwiki syntax, e.g.: [[  http://slint.fr  | Slint website]]
+# becomes: http://slint.fr[Slint website].
+s/ *\([hf]t\{1,2\}ps\?:[^| ]*\) *| *\([^]*\)/\1[\2]/g
+
+# Convert e.g. [[http://slint.fr]] to http://slint.fr.
+s/ *\([hf]t\{1,2\}ps\?:[^]*\)/\1/g
+
+# ---------------------------------------------------------------------------- #
+#                                Email addresses                               #
+# ---------------------------------------------------------------------------- #
+
+# Email addresses inside [[...]].
+/ *[^@?| ]\+@[[:alnum:].-]\+\(?[^|]*\)\? *\(|[^]*\)\?/ {
+	# Convert [[<email> | <title>]] to mailto:<email>[<title>].
+	s/ *\(mailto:\)\?\([^@?| ]\+@[[:alnum:].-]\+\.[[:alpha:]]\{2,\}\) *| *\([^]*\)/mailto:\2[\3]/g
+
+	# Convert [[<email>?subject=<subject> | <title>]] to mailto:<email>["<title>", "<subject>"].
+	# Note: This needs attribute linkattrs to be set.
+	s/ *\(mailto:\)\?\([^@?| ]\+@[[:alnum:].-]\+\.[[:alpha:]]\{2,\}\)?subject=\([^|&]*\) *| *\([^]*\)/mailto:\2["\4", "\3"]/g
+
+	# Convert [[<email>]] to mailto:<email>[].
+	s/ *\(mailto:\)\?\([^@?| ]\+@[[:alnum:].-]\+\.[[:alpha:]]\{2,\}\) */mailto:\2[]/g
+
+	# Convert [[<email>?subject=<subject>]] to mailto:<email>[, "<subject>"].
+	# Note: This needs attribute linkattrs to be set.
+	s/ *\(mailto:\)\?\([^@?| ]\+@[[:alnum:].-]\+\.[[:alpha:]]\{2,\}\)?subject=\([^|&]*\) */mailto:\2[, "\3"]/g
+}
+
+# ---------------------------------------------------------------------------- #
+#                                Internal links                                #
+# ---------------------------------------------------------------------------- #
+
+# These are links of which the target is on the server that runs DokuWiki.
+
+/[^|]*\(|[^]*\)\?/ {
+	# Remove blank titles.
+	s@\([^|>]\+\)| *@\1@g
+
+	# Wrap links in ... to be processed by rewrite-links script.
+	s@\ *\([^#][^|> ]\+\) *\(|[^]\+\)\?@\1\2@g
+
+	# Links with a title
+	# ~~~~~~~~~~~~~~~~~~
+	/[^|]*|[^]\+/ {
+		# Replace [[#ANCHOR|TITLE]] with <<ANCHOR,TITLE>>.
+		s@\ *#\([^|>]*[^|> ]\+\) *| *\([^]\+\)@<<\1,\2>>@g
+
+		# Replace [[<target>|<title>]] with xref:<target>#[<title>].
+		s@\\([^#|> ]*\) *| *\([^]\+\)@xref:\1#[\2]@g
+
+		# Replace [[<target#anchor>|<title>]] with xref:<target#anchor>[<title>].
+		s@\\([^|> ]*\) *| *\([^]\+\)@xref:\1[\2]@g
+	}
+
+	# Links without a title
+	# ~~~~~~~~~~~~~~~~~~~~~
+	# Replace [[#ANCHOR]] with <<ANCHOR>>.
+	s@\ *#\([^>]*[^> ]\+\) *@<<\1>>@g
+
+	# Replace [[<target>]] with xref:<target>#[].
+	s@\\([^#>]\+\)@xref:\1#[]@g
+
+	# Replace [[<target#anchor>]] with link:<target#anchor>[].
+	s@\\([^>]\+\)@xref:\1[]@g
+}
+
+# ---------------------------------------------------------------------------- #
+#                                    Media                                     #
+# ---------------------------------------------------------------------------- #
+:media
+
+# DokuWiki's links to media parsing is done in the script
+# dokuwiki/inc/parser/handler.php, function Doku_Handler_Parse_Media($match).
+# AsciiDoc's link images syntax is stated at
+# http://asciidoctor.org/docs/user-manual/#images
+#
+# DokuWiki syntax:
+#
+#   {{ <source>[?]<linking>&<width>[x<height>]] [| <title>] }}
+#
+# To set only height, set width to 0.
+#
+# Alignment left|center|right is done inserting a white space after
+# "{{" and/or before "}}".
+#
+# <linking> can be:
+#   details:: implicit default value, starts detail.php that displays metadata
+#   linkonly:: just an URL to the image file, image is not displayed
+#   nolinks:: no link to the image file is provided
+#   direct:: image is displayed and link to the image file provided
+#
+# AsciiDoc syntax:
+#
+#   image:<target>[<attributes>]
+#
+# where <attributes> is a comma separated list; an alt text should go first
+# in the attributes' list.
+#
+# Other attributes needed for conversion:
+# * height=<number>
+# * width=<number>
+# * align="left|center|right"
+# * link="link to the image file"
+#
+# Conversion of DokuWiki's <linking> command values:
+# * linkonly: treat as an ordinary link
+# * nolink: default for AsciiDoc
+# * direct: AsciiDoc's "link" attribute
+# * details: treated as default
+#
+# NOTE: DokuWiki syntax {{...}} is not used only for images, but for any files
+# stored in media library! Thus we have to detect media type, based on file
+# extension, and use appropriate AsciiDoc macro.
+
+# Embedded YouTube video
+/{{ *youtube>[^}]*}}/ {
+	s@{{ *youtube>\([[:alpha:]]\+:\)\?\([[:alnum:]_-]\+\)[^}]*}}@\nvideo::\2[youtube]@
+	t media
+}
+
+# Remove special media links such as {{indexmenu>.|tsort}}, {{blog>:news?10}} etc.
+s@{{ *[[:alnum:]_-]\+>[^}]*}}@@
+t media
+
+# Convert normal media links
+/{{[^}]*}}/ {
+
+	# Alignment
+	#
+	# In DokuWiki syntax the alignment is computed from spacing:
+	# * after "{{" and before "|" if there is a caption,
+	# * after "{{" and before "}}" if there is no caption.
+	# Oh, well...
+	#
+	# We remove aligning spaces, and spaces before "}}".
+	# We also isolate the pattern {{...}} that we are processing.
+	//! s@{{  *\([^|} ]*\)  *\(|[^}]*\)\? *}}@\1["\2",align="center"]@
+	//! s@{{\([^|} ]*\)  *\(|[^}]*\)\? *}}@\1["\2",align="left"]@
+	//! s@{{  *\([^|} ]*\)\(|[^}]*\)\? *}}@\1["\2",float="right"]@
+	//! s@{{\([^|} ]*\)\(|[^}]*\)\? *}}@\1["\2"]@
+
+	# Remove "|" from alt text.
+	s@\([^[]*\["\)|\([^]\+\)@\1\2@
+
+	# Replace absolute link to media on DokuWiki with internal link (but w/o
+	# converting "/" to ":").
+	s@https\?:DW_MEDIA_URI/\([^]\+\)@/\1@
+
+	# Handle image link
+	#
+	# Example:
+	# 0. [[n:m:start|{{n:img.png|alt}}]]
+	# 1. [[...]] is processed by the link patterns:
+	#    xref:/n/m/start#[{{n:img.png|alt}}]
+	# 2. {{...}} is preprocessed by the patterns above into:
+	#    xref:/n/m/start#[^]n/img.png["alt"]^]]
+	# 3. the patterns below this comment converts it into:
+	#    ^]/n/img.png["alt",link="/n/m/start"]^]
+	# 4. and next patterns finally outputs:
+	#    image::/n/img.png["alt",link="/n/m/start"]
+	/[^ ]*\[[^]*\]/ {
+		s@\([^ ]*[^[ ]*\)\[\([^]]*\)\]\]@\2,link="\1"]@
+		s@xref:\([^[ ]*\)#\[\([^]]*\)\]\]@\2,link="\1"]@
+		s@xref:\([^[ ]*\)\[\([^]]*\)\]\]@\2,link="\1"]@
+	}
+
+	# ?linkonly means that the media is not displayed inline, so we convert it
+	# to just plain link.
+	/[^[]*[?&]linkonly[^]*/ {
+		b media-linkonly
+	}
+
+	# If link is not an image (based on the file extension),
+	# convert it to a normal link.
+	/[^?[]*IMAGE_FILE_PATT[?[][^]*/I !{
+		:media-linkonly
+
+		# Remove query part of the link (as DokuWiki do).
+		s/\([^?[]\+\)?[^[]*\(\[[^]*\)/\1\2/
+
+		# If title is empty, use file name (not a complete path) as the title.
+		/[^[]\+\[""[^]*/ {
+			s@\([^:/ ]\+\)\[""\([^]]*\]\)@\1["\1"\2@
+		}
+
+		# Internal link
+		# XXX: We have replaced // with , but only for http(s), ftp(s). (why?)
+		/[[:alnum:]+-.]\+:\(\|\/\/\)[^]*/! {
+			s@/\?\([^[]\+\)\["\([^"]*\)"[^]]*\]@link:{imagesdir}\1[\2]@
+			t media  # we're done with this link
+		}
+		# External link
+		s@/\([^[]\+\)\["\([^"]*\)"[^]]*\]@\1[\2]@
+		t media  # we're done with this link
+
+		# NOTE: We don't use unconditional jump (b) here, because it may cause
+		# an inifinite loop when parsing malformed media link.
+	}
+	# Otherwise continue with processing an image...
+
+	# ?direct is used to make the image clickable, link points to the full image.
+	/[^[]*[?&]direct[^]*/ {
+		# External link
+		# XXX: We have replaced // with , but only for http(s), ftp(s). (why?)
+		/[[:alnum:]+-.]\+:\(\|\/\/\)[^]*/ {
+			s@\([^?[]*\)?[^]]*@&,link="\1"@
+		}
+		# Internal link
+		/[[:alnum:]+-.]\+:\(\|\/\/\)[^]*/! {
+			s@\([^?[]*\)?[^]]*@&,link="{imagesdir}\1"@
+		}
+	}
+
+	# Dimensions
+	#
+	# only height
+	/[^[]*[&?]0x[[:digit:]]\+[^]*/ {
+		s@[^[]*[&?]0x\([[:digit:]]\+\)[^]]*@&,height="\1"@
+		s@\([^[]*[&?]\)0x[[:digit:]]\+@\1@
+	}
+	# width and height
+	/[^[]*[&?][[:digit:]]\+x[[:digit:]]\+[^]*/ {
+		s@[^[]*[&?]\([[:digit:]]\+\)x\([[:digit:]]\+\)[^]]*@&,width="\1",height="\2"@
+		s@\([^[]*[&?]\)[[:digit:]]\+x[[:digit:]]\+@\1@
+	}
+	# only width
+	/[^[]*[&?][^x=[]*[[:digit:]]\+[^]*/ {
+		s@[^[]*[&?][^x[:digit:][]*\([[:digit:]]\+\)[^]]*@&,width="\1"@
+	}
+
+	# Remove empty alt text.
+	s/\([^]*\)\("",\?\)/\1/g
+
+	# Use block image if there's nothing else on the line,
+	/^ *[^]\+ */ {
+		s@\([^?[]*\)[?]*[^[]*\(\[[^]*\)@\nimage::\1\2@
+	}
+	# ...otherwise use inline image.
+	# XXX: align is ignored for inline images!
+	s@ \?\([^?[]*\)[?]*[^[]*\(\[[^]*\) \?@ image:\1\2 @
+
+	t media
+}
+:endlinks
+
+# Email addresses between "<" and ">".
+s/<\([^@>]\{1,30\}@[[:alnum:].-]\{1,30\}[.][[:alpha:]]\{2,\}\)>/\1/
+
+# Revert tentative replacement of "[[" and "]]".
+s//[[/g
+s//]]/g
+
+
+# ============================================================================ #
+#                                   Tables                                     #
+# ============================================================================ #
+
+# In DokuWiki a table cell begins with "^" (to be formatted as a heading)
+# or "|" (default formatting) and ends with one or more consecutive
+# "|" or "^". The number of trailing "|" or "^" indicates the number of
+# columns that the cell on their left spans on its right. For instance "^^^"
+# means that the cell spans over three columns and that the one to the
+# right on the same row (if any) should be formatted as a heading.
+#
+# Here is an example of DokuWiki formatting of table cells, followed by
+# its conversion to AsciiDoc syntax:
+#
+#   ^  This right aligned heading spans over 3 columns on its right|||
+#   3+>h|This right aligned heading span over 3 columns on its right|
+#
+# The kind ("|" or "^") of the rightmost cell boundary in a row doesn't matter
+# and in AsciiDoc the rightmost cell doesn't have a right boundary in "psv"
+# (the default) table format;
+#
+# * "^" will be converted to "h" as in "heading",
+# * "|" will not be converted (it is the default).
+#
+# ">" means align right, "^" align center, "<" align left.
+#
+# "^^^" becomes "3+".
+#
+# We won't convert vertical (over rows) spanning: that would need to store
+# the whole table in the pattern and/or hold space as the DokuWiki ":::"
+# mark found alone in a cell indicates that it should span over the cell
+# up, but in AsciiDoc the mark ".<number>" indicates that the cell spans
+# over <number> cells down, so we would need to read and store <number>
+# lines before making the conversion.
+#
+# We will make the conversion in following order:
+# 1. horizontal spanning,
+# 2. then alignment (">", "^" or "<"),
+# 3. then formatting ("h" or "d").
+
+// {
+	# Inside a table, close it if we find a line that is not a table row.
+	/^[|^[]/ !{
+		s///
+		s@[^]*@|====\n&@
+		b closetbl
+	}
+}
+/^[|^]/ {
+	# Tentatively replace "|" and "^" by control characters if part of an
+	# in-line text in a row that should not be formatted.
+	:nc1
+	/[^]*|/ {
+		s/\([^]*\)|/\1/
+		t nc1
+	}
+	:nc2
+	/[^]*^/ {
+		s/\([^]*\)^/\1/
+		t nc2
+	}
+
+	# In a mix of "|" and "^" that makes a cell boundary, the rightmost one
+	# supersedes the other ones to choose how to formatting the cell
+	# on the left (not disclosed DokuWiki syntax feature that we mimic).
+	:heading
+	s/\^\(|*\)|/|\1|/
+	s/|\(\^*\)^/^\1^/
+	t heading
+
+	# XXX: What's the purpose of this...?
+	:default
+	t default
+
+	# At most one "|" or "^" should begin a row.
+	s/^||*/|/
+	s/^^^*/^/
+
+	# Suppress spaces after the last delimiter, that will be "|".
+	s/\([|^]\+\) */\1/
+	s/\([|^]\+\)\( *\)/\1\2/
+	s/\^/|/
+	:vertbar
+	s/\^\([|]\+\)/|\1/
+	t vertbar
+	s/\^/|/
+
+	# Add "already processed" mark at the beginning of the line.
+	s/^//
+
+	# Here begins the loop inside which we process each cell.
+	:nextcell
+
+	# Cells spanning over at most 9 columns. I hope it's enough...
+	s/\([|^][^|^]\+\)|||||||||/9+\1|/
+	s/\([|^][^|^]\+\)||||||||/8+\1|/
+	s/\([|^][^|^]\+\)|||||||/7+\1|/
+	s/\([|^][^|^]\+\)||||||/6+\1|/
+	s/\([|^][^|^]\+\)|||||/5+\1|/
+	s/\([|^][^|^]\+\)||||/4+\1|/
+	s/\([|^][^|^]\+\)|||/3+\1|/
+	s/\([|^][^|^]\+\)||/2+\1|/
+	s/\([|^][^|^]\+\)^^^^^^^^^/9+\1^/
+	s/\([|^][^|^]\+\)^^^^^^^^/8+\1^/
+	s/\([|^][^|^]\+\)^^^^^^^/7+\1^/
+	s/\([|^][^|^]\+\)^^^^^^/6+\1^/
+	s/\([|^][^|^]\+\)^^^^^/5+\1^/
+	s/\([|^][^|^]\+\)^^^^/4+\1^/
+	s/\([|^][^|^]\+\)^^^/3+\1^/
+	s/\([|^][^|^]\+\)^^/2+\1^/
+
+	# Alignments: left, then right, then center. We mark each pattern that
+	# we process preceding it with U+16  to avoid processing the
+	# same one twice.
+	# We tentatively use  (U+11) for "align center" as in DokuWiki "^"
+	# denotes a cell boundary.
+	# Ensure that there's at least one space after "|" to make it more readable.
+	s/\([|^]\) \?\([^|^ ][^|^]*[|^]\)/<\1 \2/  # left
+	s/\([|^]  [^|^]*[^|^ ] \?[|^]\)/>\1/  # right
+	s/\([|^]  [^|^]*   *[|^]\)/\1/  # center
+
+	# Format the cell as a header, case occurring.
+	s/\^/h|/
+
+	# Be ready to process the next cell on the right.
+	s/\(|[^|^]*\)\([|^]\)/\1\2/
+
+	# Process the next cell if any.
+	/|/! t nextcell
+
+	# All cells of the row have now been processed.
+	# Remove the last "already processed" mark.
+	s///g
+
+	# Remove the rightmost cell boundary.
+	s/[^|^]//
+
+	# Restore the "align center" mark.
+	s//\^/g
+
+	# Insert a space before each sequence of AsciiDoc's cell attributes
+	s/\([[:digit:]]+\)\?[<>^]h\?|/ &/g
+
+	# Remove the last cell separator, and case occurring the " h" that
+	# precedes it.
+	s/ h|//
+	# Remove the "align left" mark (<) - it is the default in AsciiDoc.
+	s/<|/|/g
+	s/|//
+
+	// !{
+		# Mark the beginning of the table.
+		s/^/[options="autowidth"]\n|====\n/
+		s/$//
+	}
+}
+:closetbl
+
+
+# ============================================================================ #
+#                                   Headings                                   #
+# ============================================================================ #
+
+# We insert a blank line before the heading if there was none.
+# Bear in mind that the heading can directly follow an AsciiDoc mark
+# "end of table" just converted like this:
+#
+#   |====\n====== Chapter Navigation ======
+#
+# "======" is the maximum (header level 1) but DokuWiki accepts "=======".
+#
+# Also, there should be the same number of equal signs on both sides of
+# the heading, but the DokuWiki parser is lenient. The patterns are
+# adapted to mimic this leniency.
+
+# Document title
+/^\(|====\)\?\n*=======\([^=]\+\)=\{2,\}/ {
+	s/^\(|====\n\)======= *\([^=]\+\)=\{2,\}/\1= \2\n/
+	s/^======= *\([^=]\+\)=\{2,\}/= \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+/^\(|====\)\?\n*======\([^=]\+\)=\{2,\}/ {
+	s/^\(|====\n\)====== *\([^=]\+\)=\{2,\}/\1= \2\n/
+	s/^====== *\([^=]\+\)=\{2,\}/= \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+
+# Section level 1
+/^\(|====\)\?\n*=====\([^=]\+\)=\{2,\}/ {
+	s/^\(|====\n\)===== *\([^=]\+\)=\{2,\}/\1== \2\n/
+	s/^===== *\([^=]\+\)=\{2,\}/== \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+
+# Section level 2
+/^\(|====\)\?\n*====\([^=]\+\)=\{2,\}/ {
+	s/^\(|====\n\)==== *\([^=]\+\)=\{2,\}/\1=== \2\n/
+	s/^==== *\([^=]\+\)=\{2,\}/=== \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+
+# Section level 3
+/^\(|====\)\?\n*===\([^=]\+\)=\{2,\}/ {
+	s/^\(|===\n\)==== *\([^=]\+\)=\{2,\}/\1==== \2\n/
+	s/^=== *\([^=]\+\)=\{2,\}/==== \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+
+# Section level 4
+/^\(|====\)\?\n*==\([^=]\+\)=\{2,\}/ {
+	s/^\(|==\n\)==== *\([^=]\+\)=\{2,\}/\1===== \2\n/
+	s/^== *\([^=]\+\)=\{2,\}/===== \1\n/
+	/.*n.*/ !{
+		/^|====/ !s/^/\n/
+		/^|====/ s/\n/&\n/
+	}
+}
+
+
+# ============================================================================ #
+#                                 Admonitions                                  #
+# ============================================================================ #
+
+# Opening tags
+s/^<note>/[NOTE]\n====/
+s/^<note important>/[IMPORTANT]\n====/
+s/^<note tip>/[TIP]\n====/
+s/^<note warning>/[WARNING]\n====/
+
+# Closing tag
+\@^</note>@ {
+	s:^</note> +: +\n====:
+	s:^</note>:====:
+}
+
+
+# In AsciiDoc a line beginning with at least a single space begins a
+# literal paragraph.
+/^ +/ b continue
+/\n +/ b continue
+s/^ \([^ ]*\)/\1/g
+s/\n \([^ ]*\)/\n\1/g
+
+:continue
+
+# Line breaks inside tables
+# The line breaks outside tables have been processed in @part 1@.
+# In case of consecutive line breaks keep only the first.
+:breaks
+s/ *[\][\]  *\([\][\]  *\)/\1/
+s/ *[\][\]  */ +\n/
+t breaks
+
+
+# ============================================================================ #
+#                               Text formatting                                #
+# ============================================================================ #
+
+# When processing following items we need to write non greedy BREs, thus
+# negate the closing mark inside the BRE. To ease that, we tentatively
+# replace closing marks made of several characters by a single character.
+
+# Monospaced
+/''/ {
+	s/''//g
+	s/\([^]\+\)/\1/g
+	s//''/g
+}
+
+# ---------------------------------------------------------------------------- #
+#                                 Inline latex                                 #
+# ---------------------------------------------------------------------------- #
+
+# Inline $\latex$, convert to stem:[] and unmark formatting inside it.
+# This is for latex and mathjax plugin.
+#
+# $...$ is quite ambiguous, thus to avoid false positive cases,
+# we convert $...$ into stem:[...] only when:
+#  * no alphanumeric character before opening $ and after closing $,
+#  * no space after opening $ and before closing $,
+#  * no  after opening $.
+# This is not perfect, but it's probably the best compromise.
+/[$][^$]\+[$]/ {
+	s/[$]//g
+
+	# $...$ inside ''monospaced-text'' (between ) should not be recognized
+	# as latex.
+	// {
+		s/[^]*/&/g  # mark each closing mark of monospaced-text
+		:unmark-$
+		s/\([^]*\)\([^]*\)/\1$\2/g  # unmark all $ inside monospaced-text
+		t unmark-$
+		s///g
+	}
+
+	# Find all $...$ that satisfy the conditions mentioned above and
+	# tentatively replace opening $ with  and closing $ with .
+	:mark-intex
+	s/\(^\|[^[:alnum:]]\)\([^ ]\)\([^]*[^ ]\)\?\([^[:alnum:]]\)/\1\2\3\4/
+	t mark-intex
+
+	# Remove special meaning inside recognized $...$.
+	# XXX: Maybe this should be done earlier, in the same way as nowiki is
+	# handled.
+	// {
+		:unmark-intex
+		s/\([^]*\)\([^]*\)/\1\2/  # remove all  between $...$
+		t unmark-intex
+	}
+
+	# Finally convert latex $...$ into stem:[...].
+	s/\([^]*\)/stem:\[\1\]/g
+
+	# Revert all tentative replacements.
+	s/[]/$/g
+}
+
+# Inline <latex>...</latex>, convert to stem:[].
+# This is for old version of the DokuWiki's latex plugin.
+#
+# NOTE: This is has been recognized in Part 1 and it's encoded as a specialized
+# nowiki, so all formatting inside it has been already unmarked.
+// {
+	# Trim "$" and "$$" after the opening tag and before the closing tag.
+	# (This was used in some older version of the latex plugin in DokuWiki.)
+	s/ *[$][$]\?//g
+	s/[$]\{0,2\} *\([^]*\)/stem:\[\1\]/g
+}
+
+# ---------------------------------------------------------------------------- #
+#                              Various formatting                              #
+# ---------------------------------------------------------------------------- #
+
+# Footnotes
+/((/ {
+	s/))//g
+	s/((\([^]\+\)/footnote:[\1]/g
+	s//))/g
+}
+
+# Typographic legal symbols
+s/(c)/(C)/g
+s/(r)/(R)/g
+s/(tm)/(TM)/g
+
+# Icons
+s/:!:/icon:exclamation[]/g
+s/:?:/icon:question[]/g
+
+# Em dash
+s/---/—/g  # U+2014
+
+# En dash
+s/--/–/g  # U+2013
+
+# Underlined
+/__/ {
+	s/__//g
+	# XXX: Convert underline to strong (bold) to improve typography
+	s/\([^]\+\)/**\1**/g
+	s//__/g
+}
+
+# Strike through
+/<del>/ {
+	s:</del>::g
+	s:<del>\([^]\+\):[line-through]##\1##:g
+	s::</del>:g
+}
+
+# Superscript
+/<sup>/ {
+	s:</sup>::g
+	s:<sup>\([^]\+\):^\1^:g
+	s::</sup>:g
+}
+
+# Subscript
+/<sub>/ {
+	s:</sub>::g
+	s:<sub>\([^]\+\):~\1~:g
+	s::</sub>:g
+}
+
+# Emphasized
+# (we previously substituted  <0x17> to "//" in URLs)
+\@//@ {
+	s@//@@g
+	s@\([^]\+\)@__\1__@g
+	s@@//@g
+}
+
+# ---------------------------------------------------------------------------- #
+#                 Replace unconstrained marks with constrained                 #
+# ---------------------------------------------------------------------------- #
+
+# Convert **bold** to *bold* where applicable.
+/\*\*[^*]*\*\*/ {
+	s/\(^\|[^[:alnum:]:;}_*]\)\*\*\(\?[^*[:blank:]]\)\([^*]*[^*[:blank:]]\)\?\*\*\(\?[^*[:alnum:]]\)/\1*\2\3*\4/g
+}
+
+# Convert __italic__ to _italic_ where applicable.
+/__[^_]*__/ {
+	s/\(^\|[^[:alnum:]:;}_]\)__\(\?[^_[:blank:]]\)\([^_]*[^_[:blank:]]\)\?__\(\?[^_[:alnum:]]\)/\1_\2\3_\4/g
+}
+
+# Convert [foo]##marked## to [foo]#marked# where applicable.
+/##[^#]*##/ {
+	s/\(^\|[^[:alnum:]:;}_#]\)##\(\?[^#_[:blank:]]\)\([^#]*[^#_[:blank:]]\)\?##\(\?[^#[:alnum:]]\)/\1#\2\3#\4/g
+}
+
+# ---------------------------------------------------------------------------- #
+#                               Quotation marks                                #
+# ---------------------------------------------------------------------------- #
+
+# We search for text in straight quotes ('single' and "double") outside of
+# mono-spaced text, code blocks etc. and replace the quotes with control
+# characters, so we can later replace them with typographically correct
+# quotation marks.
+
+# Remove keyword mark inside ``mono-spaced``.
+:unescape2
+/['"]/ {
+	s/\([^]*\)\([^]*\)/\1\2/
+	t unescape2
+}
+
+# Single quotes
+/'/ {
+	# We allow a single quotation mark to be included inside a word part of a
+	# single quoted set of words.
+	s/\([[:alpha:]]\)\('[[:alpha:]]\)/\1\2/g
+	s/'//g
+	s/\(^\|[ !-.:;_)]\)\([^]\+\)\([ !-.:;_)]\)/\1\2\3/g
+	s//'/g
+}
+
+# Double quotes
+/"/ {
+	s/"//g
+	s/\(^\|[ !-.:;_)]\)\([^]\+\)\([ !-.:;_)]\)/\1\2\3/g
+	s//"/g
+}
+
+# Replace unconstrained ``mono-spaced`` marks with constrained `mono-spaced`.
+/[^]*/ {
+	s/\(^\|[^[:alnum:]:;}_]\)\(\?[[:graph:]]\)\([^]*[[:graph:]]\)\?\(\?[^[:alnum:]]\)/\1\2\3\4/g
+}
+
+
+# ============================================================================ #
+#                                 Finalization                                 #
+# ============================================================================ #
+
+# We need to escape opening curly brackets as else a line that contains
+# {word} will be removed from AsciiDoc's output unless <word> be a defined
+# attribute name, cf:
+# http://www.methods.co.nz/asciidoc/userguide.html#_simple_attributes_references
+s/{/\{/g
+
+# In an AsciiDoc "psv" table a "|" is escaped lake this: "\|".
+s//\\|/g
+s//^/g
+s/@@@@//
+s/$\$/++$$++/g
+
+:print
+
+# Finish to convert the lists, revert tentative substitutions.
+s:://:g
+s//++[++/g
+s//++]++/g
+s//++/g
+s//++/g
+s//``/g
+s//LS_QUOTE/g
+s//RS_QUOTE/g
+s//LD_QUOTE/g
+s//RD_QUOTE/g
+s//`/g
+# Restore the [source,<language>] and [verse] patterns.
+s//[[/g
+s//]]/g
+s///g
+s///g
+
+h
+x
+# Remove the indicator that says: "previous line included /^+$/".
+s///g
+# Leave only the baton in the hold space.
+s/.*//
+# Only  and  remain in the baton.
+x
+# Remove all trailing spaces.
+s/\([[:graph:]]*\) */\1/
+# Remove the baton from the line before printing it.
+s/.*//
+p
+#
+#-----END PART 2-----
+
+
+# ############################################################################ #
+#                                    PART 3                                    #
+# ############################################################################ #
+
+#-----BEGIN PART 3-----
+
+# Remove leading empty lines.
+/./,$!d
+
+# On first non-empty line...
+0,/./ {
+	# if is a title...
+	/^= [^\w\n]/ {
+		# append imagesdir attribute after the title.
+		s|$|\n:imagesdir: {imagesdir}|
+	}
+	# if is not a title...
+	/^= [^\w\n]/ !{
+		# append imagesdir attribute before the non-empty first line.
+		s|^|:imagesdir: {imagesdir}\n\n|
+	}
+}
+
+# Trim trailing spaces.
+s/  *$//
+
+# Squeez empty lines and remove trailing empty lines.
+/^$/ !{
+	x
+	/\n/ {
+		s/^\n//
+		# Squeez 2+ empty lines into 2.
+		s/\n\{2,\}/\n/
+		p
+		s/.*//
+	}
+	x
+	p
+}
+/^$/H
+#-----END PART 3-----
