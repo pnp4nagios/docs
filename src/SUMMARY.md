@@ -2,7 +2,7 @@
 
 [PNP4Nagios Documentation](PNP4NAGIOS-DOCS.md)
 
-- [Overview](overivew.md)
-- [Hello, world](hello_world.md) - functions, write your first Rust program and write your first test. Sub-test syntax and closures.
+- [Overview](overview.md)
+- [Hello, world](hello_world.md) - Sub-test syntax and closures.
 
 
