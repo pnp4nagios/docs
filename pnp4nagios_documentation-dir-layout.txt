@@ -1,4 +1,5 @@
 .
+├── book
 ├── book.toml
 ├── Contributing.md
 ├── docs.pnp4nagios.org.pages-05-03-2023.tgz
@@ -153,31 +154,8 @@
 ├── pnp4nagios_documentation-dir-layout.txt
 ├── README.md
 ├── src
-│   ├── control_flow.md
-│   ├── conversions.md
-│   ├── enums.md
-│   ├── error_handling.md
-│   ├── generics.md
-│   ├── hashmaps.md
-│   ├── hello_world.md
-│   ├── install_rust.md
-│   ├── iterators.md
-│   ├── lifetimes.md
-│   ├── LRWT.md
-│   ├── macros.md
-│   ├── mocking.md
-│   ├── modules.md
-│   ├── options.md
-│   ├── ownership_borrow_checker.md
-│   ├── primitives.md
-│   ├── README.md
-│   ├── smart_pointers.md
-│   ├── strings.md
-│   ├── structs.md
-│   ├── SUMMARY.md
-│   ├── threads.md
-│   ├── traits.md
-│   └── vectors.md
+│   ├── chapter_1.md
+│   └── SUMMARY.md
 └── template.md
 
-42 directories, 138 files
+43 directories, 115 files
