@@ -3,7 +3,7 @@ VERSION		= 1.0
 RELEASE		= 2
 DATE		= $(shell date)
 NEWRELEASE	= $(shell echo $$(($(RELEASE) + 1)))
-PROJECT_NAME    = learn_rust_with_tests
+PROJECT_NAME    = pnp4nagios_documentation
 TOPDIR = $(shell pwd)
 MANPAGES =
 #A2PS2S1C  = /usr/bin/enscript -H1 --highlight-bar-gray=08 -fCourier8 -Ebash

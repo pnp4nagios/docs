@@ -1,0 +1,183 @@
+.
+├── book.toml
+├── Contributing.md
+├── docs.pnp4nagios.org.pages-05-03-2023.tgz
+├── dokuwiki2adoc
+│   ├── BUGS
+│   ├── dokuwiki2adoc
+│   ├── LICENSE
+│   ├── README.adoc
+│   └── rewrite-links
+├── examples
+│   └── 01_hello_world
+│       └── hello_world
+│           ├── Cargo.lock
+│           ├── Cargo.toml
+│           └── src
+├── index.html
+├── LICENSE
+├── logos
+│   ├── pnp4nagios_newlogo_v1
+│   │   ├── 124200067_padded_logo.png
+│   │   ├── for_print
+│   │   │   ├── eps
+│   │   │   └── pdf
+│   │   ├── for_web
+│   │   │   ├── png
+│   │   │   └── svg
+│   │   └── getting_started_guide.html
+│   ├── pnp4nagios_newlogo_v1.tar.gz
+│   ├── pnp4nagios_newlogo_v2
+│   │   ├── 124219587_padded_logo.png
+│   │   ├── for_print
+│   │   │   ├── eps
+│   │   │   └── pdf
+│   │   ├── for_web
+│   │   │   ├── png
+│   │   │   └── svg
+│   │   └── getting_started_guide.html
+│   ├── pnp4nagios_newlogo_v2.tar.gz
+│   ├── pnp4nagios_newlogo_v3
+│   │   ├── 124339212_padded_logo.png
+│   │   ├── for_print
+│   │   │   ├── eps
+│   │   │   └── pdf
+│   │   ├── for_web
+│   │   │   ├── png
+│   │   │   └── svg
+│   │   └── getting_started_guide.html
+│   ├── pnp4nagios_newlogo_v3.tar.gz
+│   ├── pnp4nagios_newlogo_v4
+│   │   ├── 124394143_padded_logo.png
+│   │   ├── for_print
+│   │   │   ├── eps
+│   │   │   └── pdf
+│   │   ├── for_web
+│   │   │   ├── png
+│   │   │   └── svg
+│   │   └── getting_started_guide.html
+│   └── pnp4nagios_newlogo_v4.tar.gz
+├── Makefile
+├── pages
+│   ├── faq
+│   │   ├── 10.txt
+│   │   ├── 11.txt
+│   │   ├── 12.txt
+│   │   ├── 13.txt
+│   │   ├── 14.txt
+│   │   ├── 15.txt
+│   │   ├── 16.txt
+│   │   ├── 17.txt
+│   │   ├── 18.txt
+│   │   ├── 19.txt
+│   │   ├── 1.txt
+│   │   ├── 20.txt
+│   │   ├── 21.txt
+│   │   ├── 22.txt
+│   │   ├── 2.txt
+│   │   ├── 3.txt
+│   │   ├── 4.txt
+│   │   ├── 5.txt
+│   │   ├── 6.txt
+│   │   ├── 7.txt
+│   │   ├── 8.txt
+│   │   ├── 9.txt
+│   │   ├── i1.txt
+│   │   ├── i2.txt
+│   │   ├── i3.txt
+│   │   ├── i4.txt
+│   │   ├── i5.txt
+│   │   ├── i6.txt
+│   │   ├── i7.txt
+│   │   ├── i8.txt
+│   │   ├── i9.txt
+│   │   └── _template.txt
+│   ├── faq.txt
+│   ├── playground
+│   │   └── playground.txt
+│   ├── pnp-0.6
+│   │   ├── about.txt
+│   │   ├── advanced.txt
+│   │   ├── config.txt
+│   │   ├── doc_complete.txt
+│   │   ├── dwnld.txt
+│   │   ├── gallery
+│   │   │   └── start.txt
+│   │   ├── installer-pnp.txt
+│   │   ├── install.txt
+│   │   ├── migration.txt
+│   │   ├── mobile.txt
+│   │   ├── modes.txt
+│   │   ├── ndo2pnp.txt
+│   │   ├── new-features.txt
+│   │   ├── npcd.txt
+│   │   ├── pages.txt
+│   │   ├── perfdata_format.txt
+│   │   ├── rrdcached.txt
+│   │   ├── rrd_convert.txt
+│   │   ├── start.txt
+│   │   ├── timeranges.txt
+│   │   ├── tpl_custom.txt
+│   │   ├── tpl_helper_pnp.txt
+│   │   ├── tpl_helper.txt
+│   │   ├── tpl_special.txt
+│   │   ├── tpl.txt
+│   │   ├── upgrade.txt
+│   │   ├── verify_pnp_config.txt
+│   │   ├── verify.txt
+│   │   ├── webfe_cfg.txt
+│   │   ├── webfe.txt
+│   │   ├── widgets.txt
+│   │   ├── wrapper.txt
+│   │   └── xport.txt
+│   ├── sidebar.txt
+│   ├── start.txt
+│   ├── templates
+│   │   ├── alerter_gr.txt
+│   │   ├── alerter.txt
+│   │   ├── check_apachestatus.txt
+│   │   ├── check_cpu.txt
+│   │   ├── check_http.txt
+│   │   ├── check_mk-cpu.loads.txt
+│   │   ├── check_mk-df.txt
+│   │   ├── check_oracle_health_tablespace-usage.txt
+│   │   ├── check_wlsagent.txt
+│   │   ├── gradient.txt
+│   │   ├── integer.txt
+│   │   ├── start.txt
+│   │   ├── _template.txt
+│   │   └── ticker.txt
+│   └── wiki
+│       ├── dokuwiki.txt
+│       └── syntax.txt
+├── pnp4nagios_documentation-dir-layout.txt
+├── README.md
+├── src
+│   ├── control_flow.md
+│   ├── conversions.md
+│   ├── enums.md
+│   ├── error_handling.md
+│   ├── generics.md
+│   ├── hashmaps.md
+│   ├── hello_world.md
+│   ├── install_rust.md
+│   ├── iterators.md
+│   ├── lifetimes.md
+│   ├── LRWT.md
+│   ├── macros.md
+│   ├── mocking.md
+│   ├── modules.md
+│   ├── options.md
+│   ├── ownership_borrow_checker.md
+│   ├── primitives.md
+│   ├── README.md
+│   ├── smart_pointers.md
+│   ├── strings.md
+│   ├── structs.md
+│   ├── SUMMARY.md
+│   ├── threads.md
+│   ├── traits.md
+│   └── vectors.md
+└── template.md
+
+42 directories, 138 files
