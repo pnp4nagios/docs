@@ -13,8 +13,8 @@
 
 ### Rust fundamentals
 
-1. [Install Rust](src/install_rust.md) - Set up environment for productivity.
-2. [Hello, world](src/hello_world.md) - Declaring variables, constants, if/else statements, loops, functions, write your first Rust program and write your first test. Sub-test syntax and closures.
+1. [Install Rust](install_rust.md) - Set up environment for productivity.
+2. [Hello, world](hello_world.md) - Declaring variables, constants, if/else statements, loops, functions, write your first Rust program and write your first test. Sub-test syntax and closures.
 3. [Primitives]() - Further Explore function declaration syntax and learn new ways to improve the documentation of your code.
 4. [Control Flow]() - Declaring if/else, loops, match, to control the flow of your program.
 4. [Vectors]() - Learn about one of the most used data structures.
@@ -23,7 +23,7 @@
 7. [Enums]() - Learn about how to define and use `enums`.
 8. [Strings]() - Learn about the two string types, a string slice (&str) and an owned string (String).
 9. [Modules]() - Learn how to use the module system.
-10. [Mocking]() - Learn how to use the `Mockall` library to mocking.
+10. [Mocking] - Learn how to use the `Mockall` library to mocking.
 11. [Hashmaps]() - Learn how to define and use `hashmaps`.
 12. [Options]() - Learn how every Option is either Some and contains a value, or None, and does not.
 13. [Error Handling]() - Learn how to properly handle errors.
@@ -84,7 +84,7 @@ If you have such a question raise it as an issue on github and I'll try and find
 ## Contributing
 
 * _This project is work in progress_ If you would like to contribute, please do get in touch.
-* Read [contributing.md](Contributing.md) for guidelines
+* Read [contributing.md](https://github.com/0xglitchbyte/learn-rust-with-tests/tree/842f4f24d1f1c20ba3bb23cbc376c7ca6f7ca79a/contributing.md) for guidelines
 * Any ideas? Create an issue
 
 ## Who this is for
@@ -108,7 +108,7 @@ I am proud to offer this resource for free, but if you wish to give some appreci
 
 ## Feedback
 
-* Add issues/submit PRs [here](https://github.com/0xGlitchbyte/learn_Rust_with_tests) or [tweet me @0xglitchbyte](https://twitter.com/0xglitchbyte)
+* Add issues/submit PRs [here](https://github.com/0xGlitchbyte/learn_rust_with_tests) or [tweet me @0xglitchbyte](https://twitter.com/0xglitchbyte)
 
 [MIT license](LICENSE.md)
 
